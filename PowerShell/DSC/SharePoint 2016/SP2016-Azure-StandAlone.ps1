@@ -13,8 +13,8 @@
  	)
 
     Import-DscResource –ModuleName "PSDesiredStateConfiguration"
-	Import-DSCResource -ModuleName "xDSCDomainJoin" -ModuleVersion "1.1"
-	Import-DSCResource -ModuleName "xNetworking" -ModuleVersion "5.3.0.0" 
+    Import-DSCResource -ModuleName "xDSCDomainJoin" -ModuleVersion "1.1"
+    Import-DSCResource -ModuleName "xNetworking" -ModuleVersion "5.3.0.0" 
     Import-DSCResource -ModuleName "xSQLServer" -ModuleVersion "9.0.0.0"
     Import-DSCResource -ModuleName "SharePointDSC" -ModuleVersion "1.9.0.0"    
     Import-DscResource -ModuleName "VisualStudioDSC" -ModuleVersion "1.0.0.10"
@@ -23,8 +23,8 @@
     $ParamCredsSPFarmAccount = Get-AutomationPSCredential -Name "SPAdmin"
     $ParamCredsSPPassPhrase = Get-AutomationPSCredential -Name "SPPassPhrase"
         
-	Node $ParamMachineName
-	{
+    Node $ParamMachineName
+    {
 
 <# --------------------------------------------------- #>
 <#      Add Windows Features 
@@ -61,23 +61,23 @@
         }
 
         xDNSServerAddress DNS
-		{
-			Address = $ParamInternalDomainControllerIP
-			AddressFamily = "IPv4"
-			InterfaceAlias = "Ethernet"
+	{
+	    Address = $ParamInternalDomainControllerIP
+	    AddressFamily = "IPv4"
+	    InterfaceAlias = "Ethernet"
             DependsOn = "[WindowsFeature]NetFramework35Core"
-		}
+	}
 
 <# --------------------------------------------------- #>
 <#      Join Domain 
 <# --------------------------------------------------- #>
 
-		xDSCDomainJoin Join
-		{
-			Domain = $ParamDomain
-			Credential = $ParamCredsJoindomain
-			DependsOn = "[xDNSServerAddress]DNS"
-		}
+	xDSCDomainJoin Join
+	{
+	    Domain = $ParamDomain
+	    Credential = $ParamCredsJoindomain
+	    DependsOn = "[xDNSServerAddress]DNS"
+	}
 
         Group AddToAdmin
         {
@@ -85,8 +85,8 @@
             Ensure = "Present"
             MembersToInclude = $ParamCredsSPFarmAccount.UserName
             Credential = $ParamCredsJoindomain
-             PsDSCRunAsCredential = $ParamCredsJoindomain
-			DependsOn = "[xDSCDomainJoin]Join"
+            PsDSCRunAsCredential = $ParamCredsJoindomain
+	    DependsOn = "[xDSCDomainJoin]Join"
         }
 
 <# --------------------------------------------------- #>
