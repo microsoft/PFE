@@ -68,7 +68,7 @@ function RetrieveCredentialObject
 
 clear-Host
 
-Write-Host "Secure Registry Credentail Tool`r`n_______________________________" -ForegroundColor Magenta
+Write-Host "Secure Registry Credential Tool`r`n_______________________________" -ForegroundColor Magenta
 
 if($Operation -eq "Create")
 {
