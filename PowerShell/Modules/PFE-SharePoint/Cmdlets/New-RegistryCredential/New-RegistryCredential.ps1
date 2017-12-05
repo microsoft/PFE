@@ -42,7 +42,7 @@ if(!($CredentialExists))
     {
         Write-Verbose "Attempting to store username and encrypted password to the registry"
         Set-ItemProperty -Path "HKCU:\Software\$($ApplicationName)\$($OrgName)\Credentials\$($AccountDescription)" -Name Username -Value $SecureCredential.Username -ErrorAction SilentlyContinue
-        Set-ItemProperty -Path "HKCU:\Software\$($ApplicationName)\$($OrgName)\Credentials\$($AccountDescription)" -Name Password -Value $($SecurePasswordString)
+        Set-ItemProperty -Path "HKCU:\Software\$($ApplicationName)\$($OrgName)\Credentials\$($AccountDescription)" -Name Password -Value $($SecurePasswordString) -ErrorAction SilentlyContinue
         if(((Get-ItemProperty -Path "HKCU:\Software\$($ApplicationName)\$($OrgName)\Credentials\$($AccountDescription)" -Name "UserName" -ErrorAction SilentlyContinue).UserName) -and ((Get-ItemProperty -Path "HKCU:\Software\$($ApplicationName)\$($OrgName)\Credentials\$($AccountDescription)" -Name "Password" -ErrorAction SilentlyContinue).Password))
         {
             Write-Verbose "Successfully stored username and password to `'HKCU:\Software\$($ApplicationName)\$($OrgName)\Credentials\$($AccountDescription)`'"
