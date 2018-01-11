@@ -12,4 +12,4 @@ This repository exposes PowerShell modules that are currently in development. On
 
 Currently available modules:
 
-**Install-Module PFE-SharePoint
+Install-Module PFE-SharePoint
