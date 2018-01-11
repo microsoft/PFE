@@ -13,7 +13,12 @@
     Copyright = '(c) 2015-2017 Microsoft Corporation. All rights reserved.'
     Description = 'Provides cmdlets and various utilities that extend the out-of-the-box set of features available to interact with SharePoint.'
     PowerShellVersion = '4.0'
-    NestedModules = @("Cmdlets\Remove-SPEnterpriseSearchURLFromIndex\Remove-SPEnterpriseSearchURLFromIndex.psm1")
+    NestedModules = @("Cmdlets\Remove-SPEnterpriseSearchURLFromIndex\Remove-SPEnterpriseSearchURLFromIndex.psm1", 
+		       "Cmdlets\Get-SPAllUserInfo\Get-SPAllUserInfo.psm1",
+		       "Cmdlets\Set-SPContentDatabasePreferredTimerJobServer\Set-SPContentDatabasePreferredTimerJobServer.psm1",
+		       "Cmdlets\Get-SPServiceApplicationPoolCredentials\Get-SPServiceApplicationPoolCredentials.psm1",
+		       "Cmdlets\Get-RequiredModule\Get-RequiredModule.psm1"
+		     )
     CmdletsToExport = "*"
     #FunctionsToExport = @("*")
     #AliasesToExport = @()
