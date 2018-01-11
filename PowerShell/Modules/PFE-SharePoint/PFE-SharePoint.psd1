@@ -18,7 +18,7 @@
 		       "Cmdlets\Set-SPContentDatabasePreferredTimerJobServer\Set-SPContentDatabasePreferredTimerJobServer.psm1",
 		       "Cmdlets\Get-SPServiceApplicationPoolCredentials\Get-SPServiceApplicationPoolCredentials.psm1",
 		       "Cmdlets\Get-RequiredModule\Get-RequiredModule.psm1",
-		       "Cmdlets\Get-RegistryCredential\Get-RegistryCredential.psm1"
+		       "Cmdlets\Get-RegistryCredential\Get-RegistryCredential.psm1",
 		       "Cmdlets\New-RegistryCredential\New-RegistryCredential.psm1
 		     )
     CmdletsToExport = "*"
