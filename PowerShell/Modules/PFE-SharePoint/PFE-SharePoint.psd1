@@ -6,7 +6,7 @@
 # Generated on: 2017/11/23
 #
 @{
-    ModuleVersion = '1.0.0.0'
+    ModuleVersion = '1.0.0.1'
     GUID = '62859701-ca13-4e0b-ab45-608f02e9683b'
     Author = 'Microsoft Corporation'
     CompanyName = 'Microsoft Corporation'
@@ -17,7 +17,9 @@
 		       "Cmdlets\Get-SPAllUserInfo\Get-SPAllUserInfo.psm1",
 		       "Cmdlets\Set-SPContentDatabasePreferredTimerJobServer\Set-SPContentDatabasePreferredTimerJobServer.psm1",
 		       "Cmdlets\Get-SPServiceApplicationPoolCredentials\Get-SPServiceApplicationPoolCredentials.psm1",
-		       "Cmdlets\Get-RequiredModule\Get-RequiredModule.psm1"
+		       "Cmdlets\Get-RequiredModule\Get-RequiredModule.psm1",
+		       "Cmdlets\Get-RegistryCredential\Get-RegistryCredential.psm1"
+		       "Cmdlets\New-RegistryCredential\New-RegistryCredential.psm1
 		     )
     CmdletsToExport = "*"
     #FunctionsToExport = @("*")
