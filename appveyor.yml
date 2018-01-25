@@ -1,16 +1,15 @@
-version: 0.0.0.{build}
-image: WMF 5
-
+#---------------------------------#
+#      environment configuration  #
+#---------------------------------#
+version: 9.0.{build}.0
+image: Visual Studio 2017
 install:
     - git clone https://github.com/PowerShell/DscResource.Tests
+    - ps: Write-Verbose -Message "PowerShell version $($PSVersionTable.PSVersion)" -Verbose
+    - ps: Import-Module "$env:APPVEYOR_BUILD_FOLDER\DscResource.Tests\AppVeyor.psm1"
+    - ps: Invoke-AppveyorInstallTask
 
-    - npm --silent install
-
-    - ps: |
-        $moduleName = 'PFE-SharePoint'
-        $mainModuleFolder = "PowerShell\Modules\$moduleName"
-        Import-Module -Name "$env:APPVEYOR_BUILD_FOLDER\DscResource.Tests\AppVeyor.psm1"
-        Invoke-AppveyorInstallTask
-        
-build: off
-
+#---------------------------------#
+#      build configuration        #
+#---------------------------------#
+build: false
