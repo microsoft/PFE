@@ -13,3 +13,7 @@ This repository exposes PowerShell modules that are currently in development. On
 Currently available modules:
 
 Install-Module PFE-SharePoint
+
+# Releases
+
+The next major release to the PowerShell Gallery will be on ** February 7th, 2018 **
