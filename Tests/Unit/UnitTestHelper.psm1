@@ -1,4 +1,4 @@
-function New-SPDscUnitTestHelper
+function New-UnitTestHelper
 {
     [CmdletBinding()]
     param(
@@ -6,13 +6,9 @@ function New-SPDscUnitTestHelper
         [String]
         $SharePointStubModule,
 
-        [Parameter(Mandatory = $true, ParameterSetName = 'DscResource')]
+        [Parameter(Mandatory = $true, ParameterSetName = 'Cmdlet')]
         [String]
-        $DscResource,
-
-        [Parameter(Mandatory = $true, ParameterSetName = 'SubModule')]
-        [String]
-        $SubModulePath,
+        $Cmdlet,
 
         [Parameter()]
         [Switch]
@@ -24,23 +20,16 @@ function New-SPDscUnitTestHelper
     )
 
     $repoRoot = Join-Path -Path $PSScriptRoot -ChildPath "..\..\" -Resolve
-    $moduleRoot = Join-Path -Path $repoRoot -ChildPath "Modules\SharePointDsc"
+    $moduleRoot = Join-Path -Path $repoRoot -ChildPath "PowerShell\Modules\PFE-SharePoint"
 
-    $mainModule = Join-Path -Path $moduleRoot -ChildPath "SharePointDsc.psd1"
+    $mainModule = Join-Path -Path $moduleRoot -ChildPath "PFE-SharePoint.psd1"
     Import-Module -Name $mainModule -Global
 
-    if ($PSBoundParameters.ContainsKey("SubModulePath") -eq $true)
+    if ($PSBoundParameters.ContainsKey("CmdLet") -eq $true)
     {
-        $describeHeader = "Sub-module '$SubModulePath'"
-        $moduleToLoad = Join-Path -Path $moduleRoot -ChildPath $SubModulePath
-        $moduleName = (Get-Item -Path $moduleToLoad).BaseName
-    }
-
-    if ($PSBoundParameters.ContainsKey("DscResource") -eq $true)
-    {
-        $describeHeader = "DSC Resource '$DscResource'"
-        $moduleName = "MSFT_$DscResource"
-        $modulePath = "DSCResources\MSFT_$DscResource\MSFT_$DscResource.psm1"
+        $describeHeader = "CMDLet '$Cmdlet'"
+        $moduleName = "$Cmdlet"
+        $modulePath = "Cmdlets\$Cmdlet\$Cmdlet.psm1"
         $moduleToLoad = Join-Path -Path $moduleRoot -ChildPath $modulePath
     }
 

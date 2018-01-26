@@ -35,7 +35,8 @@ function Invoke-TestHarness
         $testResultSettings.Add('OutputFile', $TestResultsFile)
     }
 
-    Import-Module -Name "$repoDir\PowerShell\modules\PFE-SharePoint\PFE-SharePoint.psd1"
+    $mainModule = $repoDir + "PowerShell\Modules\PFE-SharePoint\PFE-SharePoint.psd1"
+    Import-Module $mainModule
     $testsToRun = @()
 
     # Run Unit Tests
@@ -53,7 +54,7 @@ function Invoke-TestHarness
         $testsToRun += @(@{
             'Path' = (Join-Path -Path $repoDir -ChildPath "\Tests\Unit")
             'Parameters' = @{
-                'SharePointCmdletModule' = $stubPath
+                'SharePointStubsModule' = $stubPath
             }
         })
     }
