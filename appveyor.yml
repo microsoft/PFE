@@ -1,3 +1,4 @@
+
 #---------------------------------#
 #      environment configuration  #
 #---------------------------------#
@@ -13,3 +14,22 @@ install:
 #      build configuration        #
 #---------------------------------#
 build: false
+
+#---------------------------------#
+#      test configuration         #
+#---------------------------------#
+test_script:
+    - ps: |
+        Invoke-AppveyorTestScriptTask `
+            -ExcludeTag @() `
+            -CodeCoverage `
+            -CodeCovIo
+
+#---------------------------------#
+#      deployment configuration   #
+#---------------------------------#
+
+# scripts to run before deployment
+deploy_script:
+  - ps: |
+      Invoke-AppveyorAfterTestTask
