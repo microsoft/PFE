@@ -1,22 +1,3 @@
-function Get-SPDSCInstalledProductVersion
-{
-    $pathToSearch = "C:\Program Files\Common Files\microsoft shared\Web Server Extensions\*\ISAPI\Microsoft.SharePoint.dll"
-    $fullPath = Get-Item $pathToSearch | Sort-Object { $_.Directory } -Descending | Select-Object -First 1
-    return (Get-Command $fullPath).FileVersionInfo
-}
-
-function Get-SPDSCAssemblyVersion
-{
-    [CmdletBinding()]
-    param
-    (
-        [Parameter(Mandatory = $true,Position=1)]
-        [string]
-        $PathToAssembly
-    )
-    return (Get-Command $PathToAssembly).FileVersionInfo.FileMajorPart
-}
-
 function New-UnitTestHelper
 {
     [CmdletBinding()]
@@ -66,38 +47,7 @@ function New-UnitTestHelper
             Remove-Module -Name "Microsoft.SharePoint.PowerShell" -Force -ErrorAction SilentlyContinue
             Import-Module -Name "$SharePointStubModule" -WarningAction SilentlyContinue
             Import-Module -Name "$moduleToLoad"
-
-            Mock -CommandName Get-SPDSCInstalledProductVersion -MockWith {
-                return @{
-                    FileMajorPart = $majorBuildNumber
-                }
-            }
-
-            Mock -CommandName Get-SPDSCAssemblyVersion -MockWith {
-                return $majorBuildNumber
-            }
-
 "@
-
-    if ($ExcludeInvokeHelper -eq $false)
-    {
-        $initScript += @"
-            Mock Invoke-SPDSCCommand {
-                return Invoke-Command -ScriptBlock `$ScriptBlock -ArgumentList `$Arguments -NoNewScope
-            }
-"@
-    }
-
-    if ($IncludeDistributedCacheStubs -eq $true)
-    {
-        $dcachePath = Join-Path -Path $repoRoot `
-                                -ChildPath "Tests\Unit\Stubs\DistributedCache\DistributedCache.psm1"
-        $initScript += @"
-
-            Import-Module -Name "$dcachePath" -WarningAction SilentlyContinue
-
-"@
-    }
 
     return @{
         DescribeHeader = $describeHeader
