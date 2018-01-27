@@ -10,7 +10,7 @@ function Get-SPAllUserInfo
 
     Add-PSSnapin Microsoft.SharePoint.PowerShell -ErrorAction SilentlyContinue
 
-    $site = (Get-SPWeb $Url).Site
+    $site = Get-SPSite $Url
     $usersList = $site.RootWeb.Lists["User Information List"]
 
     $userInfo = @()
