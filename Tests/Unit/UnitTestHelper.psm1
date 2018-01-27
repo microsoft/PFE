@@ -1,3 +1,22 @@
+function Get-SPDSCInstalledProductVersion
+{
+    $pathToSearch = "C:\Program Files\Common Files\microsoft shared\Web Server Extensions\*\ISAPI\Microsoft.SharePoint.dll"
+    $fullPath = Get-Item $pathToSearch | Sort-Object { $_.Directory } -Descending | Select-Object -First 1
+    return (Get-Command $fullPath).FileVersionInfo
+}
+
+function Get-SPDSCAssemblyVersion
+{
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory = $true,Position=1)]
+        [string]
+        $PathToAssembly
+    )
+    return (Get-Command $PathToAssembly).FileVersionInfo.FileMajorPart
+}
+
 function New-UnitTestHelper
 {
     [CmdletBinding()]
