@@ -35,7 +35,7 @@ Describe -Name $Global:TestHelper.DescribeHeader -Fixture {
         }
 
         Mock -CommandName ConvertTo-SecureString -MockWith {
-            return $mockCredential.Password
+            return $mockPassword
         }
 
         Context -Name "When the User Info List is Found" -Fixture {
