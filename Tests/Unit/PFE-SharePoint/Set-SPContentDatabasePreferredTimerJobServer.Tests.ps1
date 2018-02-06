@@ -12,40 +12,65 @@ Import-Module -Name (Join-Path -Path $PSScriptRoot `
                                 -Resolve)
 
 $Global:TestHelper = New-UnitTestHelper -SharePointStubModule $SharePointStubsModule `
-                                              -Cmdlet "Get-SPAllUserInfo"
+                                              -Cmdlet "Set-SPContentDatabasePreferredTimerJobServer"
 
 Describe -Name $Global:TestHelper.DescribeHeader -Fixture {
     InModuleScope -ModuleName $Global:TestHelper.ModuleName -ScriptBlock {
         Invoke-Command -ScriptBlock $Global:TestHelper.InitializeScript -NoNewScope
 
-        Mock -CommandName Get-SPSite -MockWith {
-            return @{
-                RootWeb = @{
-                    Lists = @{
-                        "User Information List" = @{
-                            Items = @(
-                                @{
-                                    Title = "contoso\john.smith"
-                                    Xml = "<xml ows_Created='2017-01-01' ows_author='contoso\john.smith'></xml>"
+
+        Context -Name "When the content database is found" -Fixture {
+            Mock -CommandName Get-SPFarm -MockWith {
+                return @{
+                    TimerService = @{
+                        Instances = @(
+                            @{
+                                Server = @{
+                                    Address = "localhost"
                                 }
-                            )   
-                        }
+                            }
+                        )
                     }
                 }
-            }| Add-Member ScriptMethod Update {
-            } -PassThru
+            }
+
+            Mock -CommandName Get-SPContentDatabase -MockWith{
+                return @{
+                    PreferredTimerServiceInstance = "localhost";
+                }| 
+                Add-Member -MemberType ScriptMethod `
+                -Name Update `
+                -Value {
+                } -PassThru
+            } 
+
+            $testParams = @{
+                Database = "WSS_Content"
+                Server = "localhost"
+            }
+
+            It "Should properly assign the prefered server" {
+                Set-SPContentDatabasePreferredTimerJobServer @testParams
+            }
         }
 
-        Context -Name "When the User Info List is Found" -Fixture {
-            
+        Context -Name "When the instance is not found" -Fixture {
+            Mock -CommandName Get-SPFarm -MockWith {
+                return @{
+                    TimerService = @{
+                        Instances = @()
+                    }
+                }
+            }
             $testParams = @{
-                Url = "http://sharepoint.contoso.com"
+                Database = "WSS_Content"
+                Server = "localhost"
             }
 
-            It "Should return contoso\john.smith" {
-                (Get-SPAllUserInfo @testParams).UserName | Should Be "contoso\john.smith"
+            It "Should properly assign the prefered server" {
+                { Set-SPContentDatabasePreferredTimerJobServer @testParams } | Should Throw "A timer job service instance could not be found on server localhost"
             }
-        }        
+        }
     }
 }
 
