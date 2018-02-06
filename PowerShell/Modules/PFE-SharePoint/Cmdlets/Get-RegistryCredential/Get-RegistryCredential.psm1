@@ -10,7 +10,7 @@ function Get-RegistryCredential
     [String]$AccountDescription
     )
 
-    $CredentialExists = CheckForExistingRegistryCredential
+    $CredentialExists = CheckForExistingRegistryCredential -ApplicationName $ApplicationName -OrgName $OrgName -AccountDescription $AccountDescription
 
     if($CredentialExists)
     {

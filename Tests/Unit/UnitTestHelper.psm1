@@ -35,17 +35,18 @@ function New-UnitTestHelper
 
     $spBuild = (Get-Item -Path $SharePointStubModule).Directory.BaseName
     $firstDot = $spBuild.IndexOf(".")
-    $majorBuildNumber = $spBuild.Substring(0, $firstDot)
 
     $describeHeader += " [SP Build: $spBuild]"
 
     Import-Module -Name $moduleToLoad -Global
 
-
-
+    $PFEStubs = (Join-Path -Path $PSScriptRoot `
+                    -ChildPath "..\Unit\Stubs\PFE-SharePoint\PFE-SharePointStubs.psm1" `
+                    -Resolve)
     $initScript = @"
             Remove-Module -Name "Microsoft.SharePoint.PowerShell" -Force -ErrorAction SilentlyContinue
             Import-Module -Name "$SharePointStubModule" -WarningAction SilentlyContinue
+            Import-Module -Name "$PFEStubs" -WarningAction SilentlyContinue
             Import-Module -Name "$moduleToLoad"
 "@
 
