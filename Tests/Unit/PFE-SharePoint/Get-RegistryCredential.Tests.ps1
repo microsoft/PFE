@@ -23,10 +23,6 @@ Describe -Name $Global:TestHelper.DescribeHeader -Fixture {
         $mockCredential = New-Object -TypeName System.Management.Automation.PSCredential `
                                      -ArgumentList @("DOMAIN\username", $mockPassword)
 
-        Mock -CommandName CheckForExistingRegistryCredential -MockWith {
-            return $true
-        }
-
         Mock -CommandName Get-ItemProperty -MockWith {
             return @{
                 UserName = "contoso\john.smith"
@@ -38,8 +34,10 @@ Describe -Name $Global:TestHelper.DescribeHeader -Fixture {
             return $mockPassword
         }
 
-        Context -Name "When the User Info List is Found" -Fixture {
-            
+        Context -Name "When the credential object is found" -Fixture {
+            Mock -CommandName CheckForExistingRegistryCredential -MockWith {
+                return $true
+            }
             $testParams = @{
                 ApplicationName = "MyTestApplication"
                 OrgName = "Contoso"
@@ -49,7 +47,22 @@ Describe -Name $Global:TestHelper.DescribeHeader -Fixture {
             It "Should return contoso\john.smith" {
                 (Get-RegistryCredential @testParams).UserName | Should Be "contoso\john.smith"
             }
-        }        
+        }
+
+        Context -Name "When the credential don't exist" -Fixture {
+            Mock -CommandName CheckForExistingRegistryCredential -MockWith {
+                return $false
+            }
+            $testParams = @{
+                ApplicationName = "MyTestApplication"
+                OrgName = "Contoso"
+                AccountDescription = "JohnSmith"
+            }
+
+            It "Should return contoso\john.smith" {
+                { Get-RegistryCredential @testParams } | Should Throw "Could not locate credential object at 'HKCU:\Software\MyTestApplication\Contoso\Credentials\JohnSmith'"
+            }
+        }
     }
 }
 
