@@ -16,3 +16,5 @@ function CheckForExistingRegistryCredential
     $RegistryCredential = Test-Path "HKCU:\Software\$($ApplicationName)\$($OrgName)\Credentials\$($AccountDescription)"
     return $RegistryCredential
 }
+
+Export-ModuleMember -Function *
