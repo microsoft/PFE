@@ -16,12 +16,12 @@ $Global:TestHelper = New-UnitTestHelper -SharePointStubModule $SharePointStubsMo
 
 Describe -Name $Global:TestHelper.DescribeHeader -Fixture {
 
-    $mockPassword = ConvertTo-SecureString -String "password" -AsPlainText -Force
-    $mockCredential = New-Object -TypeName System.Management.Automation.PSCredential `
-                                     -ArgumentList @("DOMAIN\username", $mockPassword)
-
     InModuleScope -ModuleName $Global:TestHelper.ModuleName -ScriptBlock {
         Invoke-Command -ScriptBlock $Global:TestHelper.InitializeScript -NoNewScope
+
+        $mockPassword = ConvertTo-SecureString -String "password" -AsPlainText -Force
+        $mockCredential = New-Object -TypeName System.Management.Automation.PSCredential `
+                                     -ArgumentList @("DOMAIN\username", $mockPassword)
 
         Mock -CommandName CheckForExistingRegistryCredential -MockWith {
             return $true
