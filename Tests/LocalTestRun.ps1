@@ -1,3 +1,3 @@
-Import-Module .\TestHarness.psm1 -Force
+Import-Module .\Tests\TestHarness.psm1 -Force
 
 Invoke-TestHarness
