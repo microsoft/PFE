@@ -9,6 +9,8 @@ install:
     - ps: Write-Verbose -Message "PowerShell version $($PSVersionTable.PSVersion)" -Verbose
     - ps: Import-Module "$env:APPVEYOR_BUILD_FOLDER\DscResource.Tests\AppVeyor.psm1"
     - ps: Invoke-AppveyorInstallTask
+    - ps: $moduleName = "PFE-SharePoint"
+    - ps: $mainModuleFolder = "PowerShell\Modules\$moduleName"
 
 #---------------------------------#
 #      build configuration        #
@@ -21,8 +23,8 @@ build: false
 test_script:
     - ps: |
         Invoke-AppveyorTestScriptTask `
-            -ExcludeTag @() `
-            -CodeCoverage `
+            -Type 'Harness' `
+            -MainModulePath $mainModuleFolder `
             -CodeCovIo
 
 #---------------------------------#
