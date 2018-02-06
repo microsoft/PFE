@@ -16,7 +16,7 @@ function Get-RegistryCredential
     {
         Write-Verbose "Credential object matching the parameters specified has been found`r`nRetrieving credential object from the registry"
         $CredentialUserName = (Get-ItemProperty -Path "HKCU:\Software\$($ApplicationName)\$($OrgName)\Credentials\$($AccountDescription)" -Name "UserName" -ErrorAction SilentlyContinue).UserName
-        $CredentialPassword = ConvertTo-SecureString (Get-ItemProperty -Path "HKCU:\Software\$($ApplicationName)\$($OrgName)\Credentials\$($AccountDescription)" -Name "Password" -ErrorAction SilentlyContinue).Password
+        $CredentialPassword = ConvertTo-SecureString (Get-ItemProperty -Path "HKCU:\Software\$($ApplicationName)\$($OrgName)\Credentials\$($AccountDescription)" -Name "Password" -ErrorAction SilentlyContinue)
         $Credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList ($CredentialUserName, $CredentialPassword)
         if($Credential)
         {
