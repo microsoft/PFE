@@ -35,50 +35,20 @@ function New-UnitTestHelper
 
     $spBuild = (Get-Item -Path $SharePointStubModule).Directory.BaseName
     $firstDot = $spBuild.IndexOf(".")
-    $majorBuildNumber = $spBuild.Substring(0, $firstDot)
 
     $describeHeader += " [SP Build: $spBuild]"
 
     Import-Module -Name $moduleToLoad -Global
 
-
-
+    $PFEStubs = (Join-Path -Path $PSScriptRoot `
+                    -ChildPath "..\Unit\Stubs\PFE-SharePoint\PFE-SharePointStubs.psm1" `
+                    -Resolve)
     $initScript = @"
             Remove-Module -Name "Microsoft.SharePoint.PowerShell" -Force -ErrorAction SilentlyContinue
             Import-Module -Name "$SharePointStubModule" -WarningAction SilentlyContinue
+            Import-Module -Name "$PFEStubs" -WarningAction SilentlyContinue
             Import-Module -Name "$moduleToLoad"
-
-            Mock -CommandName Get-SPDSCInstalledProductVersion -MockWith {
-                return @{
-                    FileMajorPart = $majorBuildNumber
-                }
-            }
-
-            Mock -CommandName Get-SPDSCAssemblyVersion -MockWith {
-                return $majorBuildNumber
-            }
-
 "@
-
-    if ($ExcludeInvokeHelper -eq $false)
-    {
-        $initScript += @"
-            Mock Invoke-SPDSCCommand {
-                return Invoke-Command -ScriptBlock `$ScriptBlock -ArgumentList `$Arguments -NoNewScope
-            }
-"@
-    }
-
-    if ($IncludeDistributedCacheStubs -eq $true)
-    {
-        $dcachePath = Join-Path -Path $repoRoot `
-                                -ChildPath "Tests\Unit\Stubs\DistributedCache\DistributedCache.psm1"
-        $initScript += @"
-
-            Import-Module -Name "$dcachePath" -WarningAction SilentlyContinue
-
-"@
-    }
 
     return @{
         DescribeHeader = $describeHeader

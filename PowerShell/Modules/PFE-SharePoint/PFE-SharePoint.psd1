@@ -17,7 +17,8 @@
 		       "Cmdlets\Get-SPAllUserInfo\Get-SPAllUserInfo.psm1",
 		       "Cmdlets\Set-SPContentDatabasePreferredTimerJobServer\Set-SPContentDatabasePreferredTimerJobServer.psm1",
 		       "Cmdlets\Get-RegistryCredential\Get-RegistryCredential.psm1",
-		       "Cmdlets\New-RegistryCredential\New-RegistryCredential.psm1"
+               "Cmdlets\New-RegistryCredential\New-RegistryCredential.psm1",
+               "Utility\PFE-SharePoint.Utility.psm1"
 		     )
     CmdletsToExport = "*"
     #FunctionsToExport = @("*")

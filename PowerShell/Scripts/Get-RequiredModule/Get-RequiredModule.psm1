@@ -14,7 +14,7 @@
 .LINK
     https://github.com/Microsoft/PFE
 .NOTES
-    Created & maintained by Brian Lalancette (@brianlala), 2017-2017.
+    Created & maintained by Brian Lalancette (@brianlala), 2017-2018.
 #>
 
 function Get-RequiredModule
