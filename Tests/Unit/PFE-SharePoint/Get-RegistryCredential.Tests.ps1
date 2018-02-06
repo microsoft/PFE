@@ -30,7 +30,11 @@ Describe -Name $Global:TestHelper.DescribeHeader -Fixture {
         Mock -CommandName Get-ItemProperty -MockWith {
             return @{
                 UserName = "contoso\john.smith"
-                Password = "myuserpassword"
+                Password = "76492dd116743f0423413b16050a5345MgB8AHcAdQBnAFMAMQBkADgAbQBDACsAUgB2AFEATQBYAEs `
+                AWABzAE4AOABpAGcAPQA9AHwAMgAwADUAMgBhADcANwA2ADIAMwA2AGEAYwBlADkANQBkADcAMQAyAD `
+                AAYQBjADQAZgBkADgAMQAzAGEAYgBiADIAYwA2ADDAZAA5DDMAMwBhAGUAMQBhADEANwAyADgAMQA0A `
+                GEANAA1ADEAYwBhADYAOQAxAGEAMgBjADUAYgA2ADQAYwAwAGYAMgBhADUAMgBmADEAMgBlADAANgBj `
+                ADcAOQA2ADUAZQBlADMAYQA3ADkAOAAyADUANwBmADMA"
             }
         }
 
