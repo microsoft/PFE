@@ -26,6 +26,7 @@
                "Utility\PFE-SharePoint.Utility.psm1"
                )
     CmdletsToExport = "*"
+    ScriptsToProcess = @("Utility\Import-SharePointPowerShellSnapIns.ps1")
     #FunctionsToExport = @("*")
     #AliasesToExport = @()
     PrivateData = @{
