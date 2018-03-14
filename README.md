@@ -1,3 +1,5 @@
+![Microsoft Loves Open-Source](https://i0.wp.com/nikcharlebois.com/wp-content/uploads/2018/02/MSLoveOS.png)
+
 # Disclaimer
 
 This public repository contains various open-source tools and scripts created by Microsoft Premier Field Engineers (PFE). Items in it are supported on a best-effort basis and are not officially supported by Microsoft to be used by the community.
@@ -13,3 +15,9 @@ This repository exposes PowerShell modules that are currently in development. On
 Currently available modules:
 
 Install-Module PFE-SharePoint
+
+# Releases
+
+The next major release to the PowerShell Gallery will be on February 7th, 2018
+
+

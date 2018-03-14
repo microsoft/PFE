@@ -15,31 +15,17 @@ function Remove-SPEnterpriseSearchURLFromIndex
 
         foreach($logEntry in $logEntries.Rows)
         {
-            Write-Host "You are about to remove " -NoNewline
+            Write-Host "Removing entry " -NoNewline
             Write-Host $logEntry.FullUrl -ForegroundColor Green
 
-            do{
-                $deletionAnswer = Read-Host "Do you confirm the deletion (y/n)"
-            }while($deletionAnswer.ToLower() -ne 'n' -and $deletionAnswer.ToLower() -ne 'y')
-
-            switch($deletionAnswer)
+            $catch = $cl.RemoveDocumentFromSearchResults($logEntry.FullUrl)
+            if($catch)
             {
-                'y'
-                {
-                    $catch = $cl.RemoveDocumentFromSearchResults($logEntry.FullUrl)
-                    if($catch)
-                    {
-                        Write-Host "Deleted" -ForegroundColor Yellow
-                    }
-                    else
-                    {
-                        Write-Host "Could not delete the item" -ForegroundColor Red
-                    }
-                }
-                'n'
-                {
-                    break
-                }
+                Write-Host "Deleted" -ForegroundColor Yellow
+            }
+            else
+            {
+                throw "Could not delete the item"
             }
         }
     }
