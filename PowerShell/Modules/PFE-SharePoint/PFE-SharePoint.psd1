@@ -17,9 +17,16 @@
 		       "Cmdlets\Get-SPAllUserInfo\Get-SPAllUserInfo.psm1",
 		       "Cmdlets\Set-SPContentDatabasePreferredTimerJobServer\Set-SPContentDatabasePreferredTimerJobServer.psm1",
 		       "Cmdlets\Get-RegistryCredential\Get-RegistryCredential.psm1",
+<<<<<<< HEAD
                "Cmdlets\New-RegistryCredential\New-RegistryCredential.psm1",
                "Cmdlets\Get-CheckedOutFilesInList\Get-CheckedOutFilesInList.psm1",
                "Cmdlets\New-BulkFileCheckIn\New-BulkFileCheckIn.psm1"
+=======
+           "Cmdlets\New-RegistryCredential\New-RegistryCredential.psm1",
+           "Cmdlets\Get-CheckedOutFilesInList\Get-CheckedOutFilesInList.psm1"
+           "Cmdlets\New-BulkFileCheckIn\New-BulkFileCheckIn.psm1"
+           "Utility\PFE-SharePoint.Utility.psm1"
+>>>>>>> 8e2f8090c5f5f21567b9600d46c2957372c00193
 		     )
     CmdletsToExport = "*"
     #FunctionsToExport = @("*")

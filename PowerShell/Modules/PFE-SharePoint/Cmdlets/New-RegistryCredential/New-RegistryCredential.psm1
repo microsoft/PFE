@@ -2,37 +2,46 @@ Function New-RegistryCredential
 {
     [CmdletBinding()]
     param(
-    [Parameter (Mandatory=$True, Position=0)]
-    [String]$ApplicationName,
-    [Parameter (Mandatory=$True, Position=1)]
-    [String]$OrgName,
-    [Parameter (Mandatory=$True, Position=2)]
-    [String]$AccountDescription
+        [Parameter (Mandatory=$True, Position=0)]
+        [String]
+        $ApplicationName,
+        
+        [Parameter (Mandatory=$True, Position=1)]
+        [String]
+        $OrgName,
+
+        [Parameter (Mandatory=$True, Position=2)]
+        [String]
+        $AccountDescription,
+
+        [Parameter (Mandatory=$False, Position=3)]
+        [System.Management.Automation.PSCredential]
+        $SecureCredential
     )
 
 
-    $CredentialExists = CheckForExistingRegistryCredential
+    $CredentialExists = CheckForExistingRegistryCredential -ApplicationName $ApplicationName `
+                                                           -OrgName $OrgName `
+                                                           -AccountDescription $AccountDescription
 
     if(!($CredentialExists))
     {
         Write-Verbose "Credential matching specified parameters does not exist`r`nOK to proceed"
-        $SecureCredential = Get-Credential -Message "Enter the service account credential in `'DOMAIN\Username`' or`' Username@Domain.com`' format"
-        $SecurePasswordString = $SecureCredential.Password | ConvertFrom-SecureString
-        Write-Verbose "Captured credential for user `'$($SecureCredential.UserName)`'"
-        Try
+        if($null -eq $SecureCredential)
         {
-            Write-Verbose "Attempting to create path to store credential object"
-            New-Item -Path "HKCU:\Software\$($ApplicationName)\$($OrgName)\Credentials" -Name "$($AccountDescription)" -Force
-            if(Test-Path "HKCU:\Software\$($ApplicationName)\$($OrgName)\Credentials\$($AccountDescription)")
-            {
-                Write-Verbose "Successfully created path `'HKCU:\Software\$($ApplicationName)\$($OrgName)\Credentials\$($AccountDescrioption)`' to store credential object"
-            }
+            $SecureCredential = Get-Credential -Message "Enter the service account credential in `'DOMAIN\Username`' or`' Username@Domain.com`' format"
+            $SecurePasswordString = $SecureCredential.Password | ConvertFrom-SecureString
         }
-        Catch
+        Write-Verbose "Captured credential for user `'$($SecureCredential.UserName)`'"
+        
+        Write-Verbose "Attempting to create path to store credential object"
+        New-Item -Path "HKCU:\Software\$($ApplicationName)\$($OrgName)\Credentials" -Name "$($AccountDescription)" -Force
+        if(Test-Path "HKCU:\Software\$($ApplicationName)\$($OrgName)\Credentials\$($AccountDescription)")
         {
-            Write-Verbose "Unable to create the requested registry object"
-            [System.Exception]
-            Write-Host "Unable to create path `'`KHCU:\Software\$($ApplicationName)\$($OrgName)\Credentials\$($AccountDescription)`'." -Foreground Red
+            Write-Verbose "Successfully created path `'HKCU:\Software\$($ApplicationName)\$($OrgName)\Credentials\$($AccountDescrioption)`' to store credential object"
+        }
+        else {
+            throw "Unable to create path `'`KHCU:\Software\$($ApplicationName)\$($OrgName)\Credentials\$($AccountDescription)`'."
         }
         try
         {
@@ -46,19 +55,15 @@ Function New-RegistryCredential
         }
         catch
         {
-            Write-Verbose "Exception was encountered while storing username and encrypted password to the registry"
-            [System.Exception]
-            Write-Host "Could not commit values to registry`r`nCredential not saved" -ForegroundColor Red
+            throw "Could not commit values to registry`r`nCredential not saved"
         }
         Write-Verbose "Credential `'$($AccountDescription) has been created.`r`nUser `'$($SecureCredential.UserName)`' has been assigned"
 
     }
     else
     {
-        Write-Verbose "Credential matching specified parameters already exists"
-        Write-Host "Credential for account `'$($AccountDescription)`' already exists in org `'$($OrgName)`' for application `'$($ApplicationName)`'`r`nPlease review your parameters" -ForegroundColor Red
+        throw "Credential for account '$AccountDescription' already exists in org '$OrgName' for application '$ApplicationName'"
     }
-
-    $Creds = Get-RegistryCredential -ApplicationName $ApplicationName -OrgName $OrgName -AccountDescription $AccountDescription
-    Return $Creds
+    
+    return $SecureCredential
 }
