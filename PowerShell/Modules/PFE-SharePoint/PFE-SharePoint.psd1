@@ -6,7 +6,7 @@
 # Generated on: 2017/11/23
 #
 @{
-    ModuleVersion = '1.0.0.1'
+    ModuleVersion = '1.0.0.2'
     GUID = '62859701-ca13-4e0b-ab45-608f02e9683b'
     Author = 'Microsoft Corporation'
     CompanyName = 'Microsoft Corporation'
