@@ -1,55 +1,25 @@
 
-<#PSScriptInfo
-
-.VERSION 1.0
-
-.GUID 02d5fedf-746e-4c9b-b0aa-3a6d935577aa
-
-.AUTHOR Roger Cormier
-
-.COMPANYNAME Microsoft
-
-.COPYRIGHT
-
-.TAGS
-
-.LICENSEURI
-
-.PROJECTURI
-
-.ICONURI
-
-.EXTERNALMODULEDEPENDENCIES
-
-.REQUIREDSCRIPTS
-
-.EXTERNALSCRIPTDEPENDENCIES
-
-.RELEASENOTES
-
-
-#>
-
 <#
-
-.DESCRIPTION
- This cmdlet returns all checked out files in a list
-
+Author: Roger Cormier
+Company: Microsoft
+Description: This cmdlet returns all checked out files in a list
 #>
-
 function Get-CheckedOutFilesInList
 {
     [CmdletBinding()]
     param(
-    #SPList Pipebind
-    [Parameter(Mandatory=$True, ValueFromPipeline=$True, ValueFromPipelineByPropertyName, ParameterSetName="ListFromPipeline", position=0)]
+    [Parameter(HelpMessage="Represents the SPList binding", Mandatory=$True, ValueFromPipeline=$True, ValueFromPipelineByPropertyName, ParameterSetName="ListFromPipeline", position=0)]
     [Alias ('Title')]
     [Microsoft.SharePoint.SPList]$List
     )
 
     Begin
     {
-
+        if($List -isnot [Microsoft.SharePoint.SPDocumentLibrary])
+        {
+            Write-Verbose "Referenced list `'$($List.title)`' is not a document library"
+            exit
+        }
     }
 
     Process

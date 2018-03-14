@@ -1,50 +1,17 @@
 
-<#PSScriptInfo
-
-.VERSION 1.0
-
-.GUID 020f2610-2b96-4ff6-a457-89444e4df628
-
-.AUTHOR Roger Cormier
-
-.COMPANYNAME Microsoft
-
-.COPYRIGHT
-
-.TAGS
-
-.LICENSEURI
-
-.PROJECTURI
-
-.ICONURI
-
-.EXTERNALMODULEDEPENDENCIES
-
-.REQUIREDSCRIPTS
-
-.EXTERNALSCRIPTDEPENDENCIES
-
-.RELEASENOTES
-
-
-#>
-
 <#
-
-.DESCRIPTION
- This cmdlet forces a check-in of all checked out files within a given site collection
-
+Author: Roger Cormier
+Company: Microsoft
+Description: This cmdlet performs a bulk check-in of all checked out files in a site
 #>
-
 function New-BulkFileCheckIn
 {
 [CmdletBinding()]
 param(
-[Parameter (Mandatory=$True, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True)]
+[Parameter(HelpMessage="Represents the SPSite binding", Mandatory=$True, ValueFromPipeline=$True, ValueFromPipelineByPropertyName=$True)]
 [Alias ('URL')]
 [String[]]$Site,
-[Parameter (Mandatory=$False)]
+[Parameter(HelpMessage="Represents the comment that will be used during check-in", Mandatory=$False)]
 [String]$AdminMessage
 )
 
@@ -72,9 +39,9 @@ Process
             {
                 try
                 {
-                $list.GetItemById(
-                $CheckedOutFiles[$key].id).file.CheckIn($AdminMessage)
-                Write-Verbose "checked in file with URL $($CheckedOutFiles[$key].url)"
+                    $list.GetItemById(
+                    $CheckedOutFiles[$key].id).file.CheckIn($AdminMessage)
+                    Write-Verbose "checked in file with URL $($CheckedOutFiles[$key].url)"
                 }
                 catch
                 {
@@ -84,6 +51,7 @@ Process
         }
         $web.dispose()
     }
+    $Site.dispose()
 
 }
 
