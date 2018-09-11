@@ -21,7 +21,7 @@
 param
 (
     [bool]$Confirm = $true,
-    [Parameter(Mandatory=$false)][ValidateNotNullOrEmpty()][string]$ModuleName
+    [Parameter(Mandatory = $false)][ValidateNotNullOrEmpty()][string]$ModuleName
 )
 
 $Host.UI.RawUI.BackgroundColor = "Black"
@@ -57,33 +57,36 @@ try
     # Otherwise use this list of modules to get/update
     else
     {
-        [array]$requiredModules =   "PowerShellGet",
-                                    "PackageManagement",
-                                    ##"xCredSSP",
-                                    "xStorage",
-                                    "SharePointDSC",
-                                    "Azure",
-                                    "AzureRM",
-                                    "AzureAD",
-                                    "AzurePSDrive",
-                                    "MSOnline",
-                                    "ConnectO365",
-                                    "CredentialManager",
-                                    "AADRM",
-                                    "xActiveDirectory",
-                                    "xNetworking",
-                                    "xWebAdministration",
-                                    "PSDesiredStateConfiguration",
-                                    "SharePointPnPPowerShellOnline",
-                                    "SharePointPnPPowerShell2013",
-                                    "SharePointPnPPowerShell2016",
-                                    ##"DscStudio",
-                                    "ReverseDSC",
-                                    "SharePointDSC.Reverse",
-                                    ##"SharePointOnboardingAccelerator",
-                                    "SharePointPatches",
-                                    "SqlServer",
-                                    "MicrosoftTeams"
+        [array]$requiredModules = "PowerShellGet",
+                                  "PackageManagement",
+                                  "xCredSSP",
+                                  "xStorage",
+                                  "SharePointDSC",
+                                  "Azure",
+                                  "AzureRM",
+                                  "AzureAD",
+                                  "AzurePSDrive",
+                                  "MSOnline",
+                                  "ConnectO365",
+                                  "CredentialManager",
+                                  "AADRM",
+                                  "xActiveDirectory",
+                                  "xNetworking",
+                                  "xWebAdministration",
+                                  "PSDesiredStateConfiguration",
+                                  "Microsoft.Online.SharePoint.PowerShell",
+                                  "SharePointPnPPowerShellOnline",
+                                  "SharePointPnPPowerShell2013",
+                                  "SharePointPnPPowerShell2016",
+                                  "ReverseDSC",
+                                  "SharePointDSC.Reverse",
+                                  "SharePointPatches",
+                                  "SqlServer",
+                                  "MicrosoftTeams",
+                                  "xDownloadFile",
+                                  "xDownloadISO",
+                                  "xPendingReboot",
+                                  "AzureSaveMoney"
     }
     if ($VerbosePreference -eq "Continue")
     {
@@ -93,8 +96,8 @@ try
     }
     else
     {
-            $verboseParameter = @{}
-            $noNewLineSwitch = @{NoNewLine = $true}
+        $verboseParameter = @{}
+        $noNewLineSwitch = @{NoNewLine = $true}
     }
     if ($Confirm)
     {
@@ -111,12 +114,18 @@ try
     {
         $allowClobberParameter = @{AllowClobber = $true}
     }
-    else {$allowClobberParameter = @{}}
+    else
+    {
+        $allowClobberParameter = @{}
+    }
     if (Get-Command -Name Install-Module -ParameterName SkipPublisherCheck -ErrorAction SilentlyContinue)
     {
         $skipPublisherCheckParameter = @{SkipPublisherCheck = $true}
     }
-    else {$skipPublisherCheckParameter = @{}}
+    else
+    {
+        $skipPublisherCheckParameter = @{}
+    }
     foreach ($requiredModule in $requiredModules)
     {
         Write-Host -ForegroundColor Cyan "  - Module: '$requiredModule'..."
