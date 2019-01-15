@@ -21,7 +21,8 @@
 param
 (
     [bool]$Confirm = $true,
-    [Parameter(Mandatory = $false)][ValidateNotNullOrEmpty()][string]$ModuleName
+    [Parameter(Mandatory = $false)][ValidateNotNullOrEmpty()][string]$ModuleName,
+    [Parameter(Mandatory = $false)][ValidateNotNullOrEmpty()][switch]$AllowPrerelease
 )
 
 $Host.UI.RawUI.BackgroundColor = "Black"
@@ -112,6 +113,14 @@ try
     {
         $confirmParameter = @{Confirm = $false}
     }
+    if ($AllowPrerelease)
+    {
+        $AllowPrereleaseParameter = @{AllowPrerelease = $true}
+    }
+    else
+    {
+        $AllowPrereleaseParameter = @{}
+    }
     Write-Output " - Checking for required PowerShell modules..."
     # Because SkipPublisherCheck and AllowClobber parameters don't seem to be supported on Win2012R2 let's set whether the parameters are specified here
     if (Get-Command -Name Install-Module -ParameterName AllowClobber -ErrorAction SilentlyContinue)
@@ -170,7 +179,7 @@ try
             }
             # Look for online updates to already-installed required module
             Write-Host "   - Module '$requiredModule' version $($installedModule.Version) is already installed. Looking for updates..." @noNewLineSwitch
-            $onlineModule = Find-Module -Name $requiredModule -ErrorAction SilentlyContinue
+            $onlineModule = Find-Module -Name $requiredModule @AllowPrereleaseParameter -ErrorAction SilentlyContinue
             if ($null -eq $onlineModule)
             {
                 Write-Host -ForegroundColor Yellow "Not found in the PowerShell Gallery!"
@@ -192,7 +201,7 @@ try
                     {
                         # Update to newest online version using PowerShellGet
                         Write-Host "   - Updating module '$requiredModule'..." @noNewLineSwitch
-                        Update-Module -Name $requiredModule -Force @confirmParameter @verboseParameter -ErrorAction Continue
+                        Update-Module -Name $requiredModule -Force @confirmParameter @verboseParameter @AllowPrereleaseParameter -ErrorAction Continue
                         if ($?)
                         {
                             Write-Host -ForegroundColor Green "  Done."
@@ -203,7 +212,7 @@ try
                     {
                         # Update won't work as it appears the module wasn't installed using the PS Gallery initially, so let's try a straight install
                         Write-Host "   - Installing '$requiredModule'..." @noNewLineSwitch
-                        Install-Module -Name $requiredModule -Force @allowClobberParameter @skipPublisherCheckParameter @confirmParameter @verboseParameter
+                        Install-Module -Name $requiredModule -Force @allowClobberParameter @skipPublisherCheckParameter @confirmParameter @verboseParameter @AllowPrereleaseParameter
                         if ($?)
                         {
                             Write-Host -ForegroundColor Green "  Done."
