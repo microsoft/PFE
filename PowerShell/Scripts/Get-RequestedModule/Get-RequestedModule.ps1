@@ -1,27 +1,49 @@
+
+<#PSScriptInfo
+.VERSION 1.0.0.0
+.GUID 7f59e8ee-e3bd-4d72-88fe-24caf387e6f6
+.AUTHOR Brian Lalancette (@brianlala)
+.COMPANYNAME Microsoft
+.COPYRIGHT 2019 Brian Lalancette
+.TAGS NuGet PowerShellGet
+.LICENSEURI
+.PROJECTURI https://github.com/Microsoft/PFE/tree/master/PowerShell/Scripts/Get-RequestedModule
+.ICONURI
+.EXTERNALMODULEDEPENDENCIES PowerShellGet
+.REQUIREDSCRIPTS
+.EXTERNALSCRIPTDEPENDENCIES
+.RELEASENOTES
+.PRIVATEDATA
+#>
+
 <#
 .SYNOPSIS
-    <TODO>
-.DESCRIPTION
-    <TODO>
+    Automatically installs or updates PowerShell modules from the PowerShell Gallery
+.DESCRIPTION Automatically installs or updates PowerShell modules from the PowerShell Gallery
 .EXAMPLE
-    <TODO>
+    Get-RequestedModule.ps1 -Confirm:$false -UpdateExistingInstalledModules
 .EXAMPLE
-    <TODO>
+    Get-RequestedModule.ps1 -ModulesToCheck Az,SharePointDSC -AllowPrerelease
 .PARAMETER Confirm
-    <TODO>
-.PARAMETER ModuleName
-    <TODO>
+    Prompts prior to updating an existing module or cleaning up files left over from old versions of modules.
+.PARAMETER ModulesToCheck
+    A comma-delimited list of modules to install or update.
+.PARAMETER UpdateExistingInstalledModules
+    Switch that indicates whether we should look for updates to any modules that are already installed on the current system. Disabled by default.
+.PARAMETER AllowPrerelease
+    Switch that indicates whether to allow installing or updating to prerelease module versions
 .LINK
     https://github.com/Microsoft/PFE
 .NOTES
-    Created & maintained by Brian Lalancette (@brianlala), 2017-2018.
+    Created & maintained by Brian Lalancette (@brianlala), 2017-2019.
 #>
 
 [CmdletBinding()]
 param
 (
-    [bool]$Confirm = $true,
-    [Parameter(Mandatory = $false)][ValidateNotNullOrEmpty()][string]$ModuleName,
+    [Parameter(Mandatory = $false)][bool]$Confirm = $true,
+    [Parameter(Mandatory = $false)][ValidateNotNullOrEmpty()][array]$ModulesToCheck,
+    [Parameter(Mandatory = $false)][switch]$UpdateExistingInstalledModules,
     [Parameter(Mandatory = $false)][ValidateNotNullOrEmpty()][switch]$AllowPrerelease
 )
 
@@ -42,56 +64,27 @@ Remove-Variable -Name modulesInstalled -Scope Global -Force -ErrorAction Silentl
 Remove-Variable -Name modulesUpdated -Scope Global -Force -ErrorAction SilentlyContinue
 Remove-Variable -Name modulesUnchanged -Scope Global -Force -ErrorAction SilentlyContinue
 
+if ($null -eq $ModulesToCheck)
+{
+    [array]$ModulesToCheck = @()
+}
+if ($UpdateExistingInstalledModules)
+{
+    foreach ($existingInstalledModule in (Get-InstalledModule))
+    {
+        Write-Verbose -Message " - Adding existing installed module '$($existingInstalledModule.Name)' to list of modules to update."
+        $ModulesToCheck += $existingInstalledModule.Name
+    }
+}
+
 try
 {
+    #region Pre-Checks
     if ($null -eq (Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue))
     {
         # Install NuGet
         Write-Output " - Installing NuGet..."
         Install-PackageProvider -Name NuGet -Force -ForceBootstrap | Out-Null
-    }
-    # If we specified a single module name on the command-line, just get/update that one
-    if (!([string]::IsNullOrEmpty($ModuleName)))
-    {
-        [array]$requiredModules = $ModuleName
-    }
-    # Otherwise use this list of modules to get/update
-    else
-    {
-        [array]$requiredModules =   "PowerShellGet",
-                                    "PackageManagement",
-                                    "xCredSSP",
-                                    "xStorage",
-                                    "SharePointDSC",
-                                    "Az",
-                                    #"Azure",
-                                    #"AzureRM",
-                                    "AzureAD",
-                                    "AzurePSDrive",
-                                    "MSOnline",
-                                    "ConnectO365",
-                                    "CredentialManager",
-                                    "AADRM",
-                                    "xActiveDirectory",
-                                    "xNetworking",
-                                    "xWebAdministration",
-                                    "PSDesiredStateConfiguration",
-                                    "Microsoft.Online.SharePoint.PowerShell",
-                                    "SharePointPnPPowerShellOnline",
-                                    "SharePointPnPPowerShell2013",
-                                    "SharePointPnPPowerShell2016",
-                                    "ReverseDSC",
-                                    "Office365DSC",
-                                    "SharePointDSC.Reverse",
-                                    "DSCParser",
-                                    "SharePointPatches",
-                                    "SqlServer",
-                                    "MicrosoftTeams",
-                                    "xDownloadFile",
-                                    "xDownloadISO",
-                                    "xPendingReboot",
-                                    "AzureSaveMoney",
-                                    "SysKit.SPDocKit.PS"
     }
     if ($VerbosePreference -eq "Continue")
     {
@@ -121,7 +114,7 @@ try
     {
         $AllowPrereleaseParameter = @{}
     }
-    Write-Output " - Checking for required PowerShell modules..."
+    Write-Output " - Checking for requested PowerShell modules..."
     # Because SkipPublisherCheck and AllowClobber parameters don't seem to be supported on Win2012R2 let's set whether the parameters are specified here
     if (Get-Command -Name Install-Module -ParameterName AllowClobber -ErrorAction SilentlyContinue)
     {
@@ -139,33 +132,34 @@ try
     {
         $skipPublisherCheckParameter = @{}
     }
-    foreach ($requiredModule in $requiredModules)
+    #endregion
+    foreach ($moduleToCheck in $ModulesToCheck)
     {
-        Write-Host -ForegroundColor Cyan "  - Module: '$requiredModule'..."
-        [array]$installedModules = Get-Module -ListAvailable -FullyQualifiedName $requiredModule
+        Write-Host -ForegroundColor Cyan "  - Module: '$moduleToCheck'..."
+        [array]$installedModules = Get-Module -ListAvailable -FullyQualifiedName $moduleToCheck
         if ($null -eq $installedModules)
         {
-            # Install required module since it wasn't detected
-            $onlineModule = Find-Module -Name $requiredModule -ErrorAction SilentlyContinue
+            # Install requested module since it wasn't detected
+            $onlineModule = Find-Module -Name $moduleToCheck -ErrorAction SilentlyContinue
             if ($onlineModule)
             {
-                Write-Host -ForegroundColor DarkYellow  "   - Module '$requiredModule' not present. Installing version $($onlineModule.Version)..." @noNewLineSwitch
-                Install-Module -Name $requiredModule -ErrorAction Inquire -Force @allowClobberParameter @skipPublisherCheckParameter @verboseParameter
+                Write-Host -ForegroundColor DarkYellow  "   - Module '$moduleToCheck' not present. Installing version $($onlineModule.Version)..." @noNewLineSwitch
+                Install-Module -Name $moduleToCheck -ErrorAction Inquire -Force @allowClobberParameter @skipPublisherCheckParameter @verboseParameter
                 if ($?)
                 {
                     Write-Host -ForegroundColor Green "  Done."
-                    [array]$global:modulesInstalled += $requiredModule
+                    [array]$global:modulesInstalled += $moduleToCheck
                 }
             }
             else
             {
-                Write-Host -ForegroundColor Yellow "   - Module '$requiredModule' not present, and was not found in the PowerShell Gallery for installation/update."
-                [array]$global:modulesUnchanged += $requiredModule
+                Write-Host -ForegroundColor Yellow "   - Module '$moduleToCheck' not present, and was not found in the PowerShell Gallery for installation/update."
+                [array]$global:modulesUnchanged += $moduleToCheck
             }
         }
         else
         {
-            $installedModule = Get-InstalledModule -Name $requiredModule -ErrorAction SilentlyContinue
+            $installedModule = Get-InstalledModule -Name $moduleToCheck -ErrorAction SilentlyContinue
             if ($installedModule)
             {
                 # If we were successful in querying the module this way it was probably originally installed from the Gallery
@@ -177,13 +171,13 @@ try
                 $installedModule = ($installedModules | Sort-Object Version -Descending)[0]
                 $installedModuleWasFromGallery = $false
             }
-            # Look for online updates to already-installed required module
-            Write-Host "   - Module '$requiredModule' version $($installedModule.Version) is already installed. Looking for updates..." @noNewLineSwitch
-            $onlineModule = Find-Module -Name $requiredModule @AllowPrereleaseParameter -ErrorAction SilentlyContinue
+            # Look for online updates to already-installed requested module
+            Write-Host "   - Module '$moduleToCheck' version $($installedModule.Version) is already installed. Looking for updates..." @noNewLineSwitch
+            $onlineModule = Find-Module -Name $moduleToCheck @AllowPrereleaseParameter -ErrorAction SilentlyContinue
             if ($null -eq $onlineModule)
             {
                 Write-Host -ForegroundColor Yellow "Not found in the PowerShell Gallery!"
-                [array]$global:modulesUnchanged += $requiredModule
+                [array]$global:modulesUnchanged += $moduleToCheck
             }
             else
             {
@@ -192,7 +186,7 @@ try
                 {
                     # Online and local versions match; no action required
                     Write-Host -ForegroundColor Gray "Already up-to-date ($($installedModule.Version))."
-                    [array]$global:modulesUnchanged += $requiredModule
+                    [array]$global:modulesUnchanged += $moduleToCheck
                 }
                 else
                 {
@@ -200,28 +194,28 @@ try
                     if ($installedModule -and $installedModuleWasFromGallery)
                     {
                         # Update to newest online version using PowerShellGet
-                        Write-Host "   - Updating module '$requiredModule'..." @noNewLineSwitch
-                        Update-Module -Name $requiredModule -Force @confirmParameter @verboseParameter @AllowPrereleaseParameter -ErrorAction Continue
+                        Write-Host "   - Updating module '$moduleToCheck'..." @noNewLineSwitch
+                        Update-Module -Name $moduleToCheck -Force @confirmParameter @verboseParameter @AllowPrereleaseParameter -ErrorAction Continue
                         if ($?)
                         {
                             Write-Host -ForegroundColor Green "  Done."
-                            [array]$global:modulesUpdated += $requiredModule
+                            [array]$global:modulesUpdated += $moduleToCheck
                         }
                     }
                     else
                     {
                         # Update won't work as it appears the module wasn't installed using the PS Gallery initially, so let's try a straight install
-                        Write-Host "   - Installing '$requiredModule'..." @noNewLineSwitch
-                        Install-Module -Name $requiredModule -Force @allowClobberParameter @skipPublisherCheckParameter @confirmParameter @verboseParameter @AllowPrereleaseParameter
+                        Write-Host "   - Installing '$moduleToCheck'..." @noNewLineSwitch
+                        Install-Module -Name $moduleToCheck -Force @allowClobberParameter @skipPublisherCheckParameter @confirmParameter @verboseParameter @AllowPrereleaseParameter
                         if ($?)
                         {
                             Write-Host -ForegroundColor Green "  Done."
-                            [array]$global:modulesUpdated += $requiredModule
+                            [array]$global:modulesUpdated += $moduleToCheck
                         }
                     }
                 }
                 # Now check if we have more than one version installed
-                [array]$installedModules = Get-Module -ListAvailable -FullyQualifiedName $requiredModule
+                [array]$installedModules = Get-Module -ListAvailable -FullyQualifiedName $moduleToCheck
                 if ($installedModules.Count -gt 1)
                 {
                     # Remove all non-current module versions including ones that weren't put there via the PowerShell Gallery
@@ -250,13 +244,13 @@ try
                 }
             }
         }
-        $installedModule = Get-InstalledModule -Name $requiredModule -ErrorAction SilentlyContinue
+        $installedModule = Get-InstalledModule -Name $moduleToCheck -ErrorAction SilentlyContinue
         if ($null -eq $installedModule)
         {
             # Module was not installed from the Gallery, so we look for it an alternate way
-            $installedModule = Get-Module -Name $requiredModule -ListAvailable | Sort-Object Version | Select-Object -Last 1
+            $installedModule = Get-Module -Name $moduleToCheck -ListAvailable | Sort-Object Version | Select-Object -Last 1
         }
-        Write-Host -ForegroundColor Cyan "  - Done checking/installing module '$requiredModule'."
+        Write-Host -ForegroundColor Cyan "  - Done checking/installing module '$moduleToCheck'."
         Write-Output "  --"
         # Clean up the variables
         Remove-Variable -Name installedModules -ErrorAction SilentlyContinue
@@ -265,13 +259,13 @@ try
         Remove-Variable -Name oldModule -ErrorAction SilentlyContinue
         Remove-Variable -Name onlineModule -ErrorAction SilentlyContinue
     }
-    Write-Host -ForegroundColor DarkCyan " - Done checking/installing required modules."
+    Write-Host -ForegroundColor DarkCyan " - Done checking/installing requested modules."
     Write-Output "  --"
 }
 catch
 {
     Write-Host -ForegroundColor Red $_.Exception
-    Write-Error "Unable to download/install '$requiredModule' - check Internet access etc."
+    Write-Error "Unable to download/install '$moduleToCheck' - check Internet access etc."
 }
 finally
 {
