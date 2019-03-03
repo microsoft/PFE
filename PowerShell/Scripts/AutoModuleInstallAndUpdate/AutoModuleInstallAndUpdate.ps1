@@ -1,6 +1,6 @@
 
 <#PSScriptInfo
-.VERSION 0.8.0.0
+.VERSION 0.8.0.2
 .GUID 7f59e8ee-e3bd-4d72-88fe-24caf387e6f6
 .AUTHOR Brian Lalancette (@brianlala)
 .DESCRIPTION Automatically installs or updates PowerShell modules from the PowerShell Gallery
@@ -143,7 +143,8 @@ try
             $skipPublisherCheckParameter = @{}
         }
         #endregion
-        foreach ($moduleToCheck in $ModulesToCheck)
+        Write-Verbose -Message " - `$ModulesToCheck: $($ModulesToCheck | Select-Object -Unique)"
+        foreach ($moduleToCheck in ($ModulesToCheck | Select-Object -Unique))
         {
             Write-Host -ForegroundColor Cyan "  - Module: '$moduleToCheck'..."
             $Host.UI.RawUI.WindowTitle = "Checking '$moduleToCheck'..."
@@ -270,7 +271,11 @@ try
                                 {
                                     Write-Warning -Message "Some or all of the path '$($oldModule.ModuleBase)' could not be removed - check permissions on this location."
                                 }
-                                [array]$global:modulesRemoved += "$($oldModule.Name) version $($oldModule.Version)"
+                                else
+                                {
+                                    Write-Verbose -Message "  - Successfully removed prior version $($oldModule.Version) of '$($oldModule.Name)'."
+                                    [array]$global:modulesRemoved += "$($oldModule.Name) version $($oldModule.Version)"
+                                }
                                 $Host.UI.RawUI.WindowTitle = $originalWindowTitle
                             }
                         }
@@ -340,7 +345,7 @@ finally
         Write-Host -ForegroundColor Cyan " - Uninstalled/Removed Module Versions:"
         foreach ($moduleRemoved in $global:modulesRemoved)
         {
-            Write-Host -ForegroundColor DarkRed "  - $moduleRemoved"
+            Write-Host -ForegroundColor DarkGreen "  - $moduleRemoved"
         }
     }
     if (!$global:modulesInstalled -and !$global:modulesUpdated)
