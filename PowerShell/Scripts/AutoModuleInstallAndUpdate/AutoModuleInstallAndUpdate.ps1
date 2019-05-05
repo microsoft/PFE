@@ -1,6 +1,6 @@
 
 <#PSScriptInfo
-.VERSION 0.8.0.2
+.VERSION 0.8.0.3
 .GUID 7f59e8ee-e3bd-4d72-88fe-24caf387e6f6
 .AUTHOR Brian Lalancette (@brianlala)
 .DESCRIPTION Automatically installs or updates PowerShell modules from the PowerShell Gallery
@@ -50,7 +50,7 @@ param
     [Parameter(Mandatory = $false)][switch]$UpdateExistingInstalledModules = $false,
     [Parameter(Mandatory = $false)][switch]$AllowPrerelease = $false,
     [Parameter(Mandatory = $false)][switch]$IncludeManuallyInstalledModules = $false,
-    [Parameter(Mandatory = $false)][bool]$RemoveOldModuleVersions = $true
+    [Parameter(Mandatory = $false)][switch]$KeepPriorModuleVersions = $false
 )
 
 # If -IncludeManuallyInstalledModules was specified then this implies -UpdateExistingInstalledModules
@@ -241,7 +241,11 @@ try
                     [array]$installedModuleVersions = Get-Module -ListAvailable -FullyQualifiedName $moduleToCheck
                     if ($installedModuleVersions.Count -gt 1)
                     {
-                        if ($RemoveOldModuleVersions)
+                        if ($KeepPriorModuleVersions)
+                        {
+                            Write-Verbose -Message "  - NOT removing prior version(s) of '$moduleToCheck' as `"KeepPriorModuleVersions`" was specified."
+                        }
+                        else
                         {
                             # Remove all non-current module versions including ones that weren't put there via the PowerShell Gallery
                             [array]$oldModules = $installedModuleVersions | Where-Object {$_.Version -ne $onlineModule.Version}
@@ -279,15 +283,12 @@ try
                                 $Host.UI.RawUI.WindowTitle = $originalWindowTitle
                             }
                         }
-                        else
-                        {
-                            Write-Verbose -Message "  - NOT removing prior version(s) of '$moduleToCheck' since `"RemoveOldModuleVersions:`$false`" was specified."
-                        }
                     }
                 }
             }
-            $installedModule = Get-InstalledModule -Name $moduleToCheck -ErrorAction SilentlyContinue
-            if ($null -eq $installedModule)
+        }
+        $installedModule = Get-InstalledModule -Name $moduleToCheck -ErrorAction SilentlyContinue
+        if ($null -eq $installedModule)
         {
             # Module was not installed from the Gallery, so we look for it an alternate way
             $installedModule = Get-Module -Name $moduleToCheck -ListAvailable | Sort-Object Version | Select-Object -Last 1
@@ -300,9 +301,8 @@ try
         Remove-Variable -Name oldModules -ErrorAction SilentlyContinue
         Remove-Variable -Name oldModule -ErrorAction SilentlyContinue
         Remove-Variable -Name onlineModule -ErrorAction SilentlyContinue
-    }
-    Write-Host -ForegroundColor DarkCyan " - Done checking/installing requested modules."
-    Write-Output "  --"
+        Write-Host -ForegroundColor DarkCyan " - Done checking/installing requested modules."
+        Write-Output "  --"
     }
     else
     {
