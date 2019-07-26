@@ -1,6 +1,6 @@
 
 <#PSScriptInfo
-.VERSION 0.8.0.3
+.VERSION 0.8.0.5
 .GUID 7f59e8ee-e3bd-4d72-88fe-24caf387e6f6
 .AUTHOR Brian Lalancette (@brianlala)
 .DESCRIPTION Automatically installs or updates PowerShell modules from the PowerShell Gallery
@@ -32,7 +32,7 @@
     Switch that indicates whether we should look for updates to any modules that are already installed on the current system. Disabled by default.
 .PARAMETER AllowPrerelease
     Switch that indicates whether to allow installing or updating to prerelease module versions. Disabled by default.
-.PARAMETER IncludeManuallyInstalledModules
+.PARAMETER IncludeAnyManuallyInstalledModules
     Switch that specifies we should attempt to update any modules that weren't originally installed from the PowerShell Gallery. Disabled by default.
 .PARAMETER KeepPriorModuleVersions
     Switch indicating that older versions of any updated/installed modules should be left in place. By default, any old module versions detected are uninstalled and removed from the file system.
@@ -49,14 +49,14 @@ param
     [Parameter(Mandatory = $false)][ValidateNotNullOrEmpty()][array]$ModulesToCheck,
     [Parameter(Mandatory = $false)][switch]$UpdateExistingInstalledModules = $false,
     [Parameter(Mandatory = $false)][switch]$AllowPrerelease = $false,
-    [Parameter(Mandatory = $false)][switch]$IncludeManuallyInstalledModules = $false,
+    [Parameter(Mandatory = $false)][switch]$IncludeAnyManuallyInstalledModules = $false,
     [Parameter(Mandatory = $false)][switch]$KeepPriorModuleVersions = $false
 )
 
-# If -IncludeManuallyInstalledModules was specified then this implies -UpdateExistingInstalledModules
-if ($IncludeManuallyInstalledModules -and (!$UpdateExistingInstalledModules))
+# If -IncludeAnyManuallyInstalledModules was specified then this implies -UpdateExistingInstalledModules
+if ($IncludeAnyManuallyInstalledModules -and (!$UpdateExistingInstalledModules))
 {
-    Write-Verbose -Message " - `"IncludeManuallyInstalledModules`" specified; assuming `"UpdateExistingInstalledModules`" as well."
+    Write-Verbose -Message " - `"IncludeAnyManuallyInstalledModules`" specified; assuming `"UpdateExistingInstalledModules`" as well."
     $UpdateExistingInstalledModules = $true
 }
 $Host.UI.RawUI.BackgroundColor = "Black"
@@ -122,6 +122,7 @@ try
     {
         $AllowPrereleaseParameter = @{}
     }
+    #endregion
     if (($UpdateExistingInstalledModules) -or ($ModulesToCheck.Count -ge 1))
     {
         Write-Output " - Checking for requested PowerShell modules..."
@@ -142,14 +143,13 @@ try
         {
             $skipPublisherCheckParameter = @{}
         }
-        #endregion
         Write-Verbose -Message " - `$ModulesToCheck: $($ModulesToCheck | Select-Object -Unique)"
         foreach ($moduleToCheck in ($ModulesToCheck | Select-Object -Unique))
         {
             Write-Host -ForegroundColor Cyan "  - Module: '$moduleToCheck'..."
             $Host.UI.RawUI.WindowTitle = "Checking '$moduleToCheck'..."
             [array]$installedModuleVersions = Get-Module -ListAvailable -FullyQualifiedName $moduleToCheck
-            if ($null -eq $installedModuleVersions)
+            if ($null -eq $installedModuleVersions -and (!(Get-InstalledModule -Name $moduleToCheck -ErrorAction SilentlyContinue)))
             {
                 # Install requested module since it wasn't detected
                 $onlineModule = Find-Module -Name $moduleToCheck -ErrorAction SilentlyContinue
@@ -219,8 +219,8 @@ try
                         }
                         else
                         {
-                            # Update won't work as it appears the module wasn't installed using the PS Gallery initially, so let's try a straight install if IncludeManuallyInstalledModules was specified
-                            if ($IncludeManuallyInstalledModules)
+                            # Update won't work as it appears the module wasn't installed using the PS Gallery initially, so let's try a straight install if IncludeAnyManuallyInstalledModules was specified
+                            if ($IncludeAnyManuallyInstalledModules)
                             {
                                 Write-Host "   - Installing '$moduleToCheck'..." @noNewLineSwitch
                                 Install-Module -Name $moduleToCheck -Force @allowClobberParameter @skipPublisherCheckParameter @confirmParameter @verboseParameter @AllowPrereleaseParameter
@@ -232,7 +232,7 @@ try
                             }
                             else
                             {
-                                Write-Verbose -Message "  - Not updating/installing '$moduleToCheck' as it wasn't originally installed from the Gallery and `"IncludeManuallyInstalledModules`" not specified."
+                                Write-Verbose -Message "  - Not updating/installing '$moduleToCheck' as it wasn't originally installed from the Gallery and `"IncludeAnyManuallyInstalledModules`" not specified."
                             }
                         }
                         $Host.UI.RawUI.WindowTitle = $originalWindowTitle
