@@ -1,6 +1,6 @@
 
 <#PSScriptInfo
-.VERSION 0.8.0.6
+.VERSION 0.8.0.7
 .GUID 7f59e8ee-e3bd-4d72-88fe-24caf387e6f6
 .AUTHOR Brian Lalancette (@brianlala)
 .DESCRIPTION Automatically installs or updates PowerShell modules from the PowerShell Gallery
@@ -83,19 +83,18 @@ Remove-Variable -Name modulesUpdated -Scope Global -Force -ErrorAction SilentlyC
 Remove-Variable -Name modulesUnchanged -Scope Global -Force -ErrorAction SilentlyContinue
 Remove-Variable -Name modulesRemoved -Scope Global -Force -ErrorAction SilentlyContinue
 
-# If we didn't specify any modules to check on the command line, create an empty hash table that we can add items to later
-if ($null -eq $ModulesToCheck -and $null -eq $ModulesAndVersionsToCheck)
+# If we didn't specify a modules-with-versions hash table to check on the command line, create an empty hash table that we can add items to later
+if ($null -eq $ModulesAndVersionsToCheck)
 {
     [hashtable]$ModulesAndVersionsToCheck = @{}
-}
-else
-{
-    [hashtable]$ModulesAndVersionsToCheck = @{}
-    # Add each item in the $ModulesToCheck array to the $ModulesAndVersionsToCheck hash table, with blank version to specify the latest available
-    foreach ($ModuleName in $ModulesToCheck)
+    if ($ModulesToCheck.Count -ge 1)
     {
-        $ModulesAndVersionsToCheck[$ModuleName] = "" # Empty quotes for latest available version
-    }    
+        # Add each item in the $ModulesToCheck array to the $ModulesAndVersionsToCheck hash table, with blank version to specify the latest available
+        foreach ($ModuleName in $ModulesToCheck)
+        {
+            $ModulesAndVersionsToCheck[$ModuleName] = "" # Empty quotes for latest available version
+        }
+    }
 }
 if ($UpdateExistingInstalledModules)
 {
@@ -352,7 +351,7 @@ try
     }
     else
     {
-        Write-Output " - Nothing to do! Specify -UpdateExistingInstalledModules and/or -ModulesToCheck to perform module checks/installs/updates."
+        Write-Output " - Nothing to do! Specify -UpdateExistingInstalledModules, -ModulesToCheck or -ModulesAndVersionsToCheck to perform module checks/installs/updates."
     }
 }
 catch
