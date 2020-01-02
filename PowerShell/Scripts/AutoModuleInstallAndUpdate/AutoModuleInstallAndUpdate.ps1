@@ -1,6 +1,6 @@
 
 <#PSScriptInfo
-.VERSION 0.8.0.7
+.VERSION 0.8.1.0
 .GUID 7f59e8ee-e3bd-4d72-88fe-24caf387e6f6
 .AUTHOR Brian Lalancette (@brianlala)
 .DESCRIPTION Automatically installs or updates PowerShell modules from the PowerShell Gallery
@@ -96,6 +96,11 @@ if ($null -eq $ModulesAndVersionsToCheck)
         }
     }
 }
+elseif ($null -ne $ModulesToCheck -or $null -ne $ModulesAndVersionsToCheck)
+{
+    # We want to make sure that if we have specifically included modules to check that they're checked even if they were manually installed
+    $updateModulesEvenIfManuallyInstalled = $true
+}
 if ($UpdateExistingInstalledModules)
 {
     foreach ($existingInstalledModule in ((Get-Module -ListAvailable | Where-Object ModuleBase -like "$env:ProgramFiles\WindowsPowerShell\Modules\*")))
@@ -134,7 +139,7 @@ try
     {
         $confirmParameter = @{Confirm = $false}
     }
-    if ($AllowPrerelease)
+    if ($AllowPrerelease -eq $true)
     {
         $AllowPrereleaseParameter = @{AllowPrerelease = $true}
     }
@@ -180,7 +185,7 @@ try
             }
 
             [array]$installedModuleVersions = Get-Module -ListAvailable -FullyQualifiedName $moduleToCheck
-            if ($null -eq $installedModuleVersions -and (!(Get-InstalledModule -Name $moduleToCheck @requiredVersionParameter -ErrorAction SilentlyContinue)))
+            if ($null -eq $installedModuleVersions -or ($null -eq (Get-InstalledModule -Name $moduleToCheck @requiredVersionParameter -ErrorAction SilentlyContinue)))
             {
                 # Install requested module since it wasn't detected
                 $onlineModule = Find-Module -Name $moduleToCheck -ErrorAction SilentlyContinue @requiredVersionParameter
@@ -188,11 +193,11 @@ try
                 {
                     Write-Host -ForegroundColor DarkYellow  "   - Module '$moduleToCheck' not present. Installing version $($onlineModule.Version)..." @noNewLineSwitch
                     $Host.UI.RawUI.WindowTitle = "Installing '$moduleToCheck'..."
-                    Install-Module -Name $moduleToCheck -ErrorAction Inquire -Force @allowClobberParameter @skipPublisherCheckParameter @verboseParameter @requiredVersionParameter
+                    Install-Module -Name $moduleToCheck -ErrorAction Inquire -Force @allowClobberParameter @skipPublisherCheckParameter @verboseParameter @requiredVersionParameter -AcceptLicense
                     if ($?)
                     {
                         Write-Host -ForegroundColor Green "  Done."
-                        [array]$global:modulesInstalled += $moduleToCheck
+                        [array]$global:modulesInstalled += "$moduleToCheck version $($onlineModule.Version)"
                     }
                 }
                 else
@@ -244,24 +249,24 @@ try
                             # Update to newest online version using PowerShellGet
                             Write-Host "   - Updating module '$moduleToCheck'..." @noNewLineSwitch
                             $Host.UI.RawUI.WindowTitle = "Updating '$moduleToCheck'..."
-                            Update-Module -Name $moduleToCheck -Force @confirmParameter @verboseParameter @AllowPrereleaseParameter -ErrorAction Continue @requiredVersionParameter
+                            Update-Module -Name $moduleToCheck -Force @confirmParameter @verboseParameter @AllowPrereleaseParameter -ErrorAction Continue @requiredVersionParameter -AcceptLicense
                             if ($?)
                             {
                                 Write-Host -ForegroundColor Green "  Done."
-                                [array]$global:modulesUpdated += $moduleToCheck
+                                [array]$global:modulesUpdated += "$moduleToCheck to version $($onlineModule.Version)"
                             }
                         }
                         else
                         {
                             # Update won't work as it appears the module wasn't installed using the PS Gallery initially, so let's try a straight install if IncludeAnyManuallyInstalledModules was specified
-                            if ($IncludeAnyManuallyInstalledModules)
+                            if ($IncludeAnyManuallyInstalledModules -or $updateModulesEvenIfManuallyInstalled)
                             {
                                 Write-Host "   - Installing '$moduleToCheck'..." @noNewLineSwitch
-                                Install-Module -Name $moduleToCheck -Force @allowClobberParameter @skipPublisherCheckParameter @confirmParameter @verboseParameter @AllowPrereleaseParameter
+                                Install-Module -Name $moduleToCheck -Force @allowClobberParameter @skipPublisherCheckParameter @confirmParameter @verboseParameter @AllowPrereleaseParameter -AcceptLicense
                                 if ($?)
                                 {
                                     Write-Host -ForegroundColor Green "  Done."
-                                    [array]$global:modulesUpdated += $moduleToCheck
+                                    [array]$global:modulesUpdated += "$moduleToCheck to version $($onlineModule.Version)"
                                 }
                             }
                             else
@@ -273,7 +278,7 @@ try
                     }
                     # Now check if we have more than one version installed and remove prior versions unless we've specified otherwise
                     [array]$installedModuleVersions = Get-Module -ListAvailable -FullyQualifiedName $moduleToCheck
-                    $installedModuleVersions += Get-InstalledModule -Name $moduleToCheck -AllVersions -AllowPrerelease
+                    $installedModuleVersions += Get-InstalledModule -Name $moduleToCheck -AllVersions @AllowPrereleaseParameter
                     if ($installedModuleVersions.Count -gt 1)
                     {
                         if ($KeepPriorModuleVersions)
@@ -288,12 +293,16 @@ try
                             {
                                 Write-Verbose -Message "  - Older versions of module '$moduleToCheck' found ($($oldModules.Count))."
                             }
-                            foreach ($oldModule in $oldModules | Where-Object {$oldModule.Name -ne "PackageManagement"}) # Don't want to risk accidentally blowing away the main module doing the updating...
+                            foreach ($oldModule in $oldModules | Where-Object {$_.Name -ne "PackageManagement"}) # Don't want to risk accidentally blowing away the main module doing the updating...
                             {
                                 Write-Host "   - Uninstalling old version $($oldModule.Version) of '$($oldModule.Name)'..." @noNewLineSwitch
                                 $Host.UI.RawUI.WindowTitle = "Uninstalling old version of '$($oldModule.Name)'..."
-                                Uninstall-Module -Name $oldModule.Name -RequiredVersion $oldModule.Version -Force -ErrorAction SilentlyContinue @verboseParameter -AllowPrerelease
-                                if ($?) {Write-Host -ForegroundColor Green "  Done."}
+                                Uninstall-Module -Name $oldModule.Name -RequiredVersion $oldModule.Version -Force -ErrorAction SilentlyContinue @verboseParameter @AllowPrereleaseParameter
+                                if ($?)
+                                {
+                                    Write-Host -ForegroundColor Green "  Done."
+                                    [array]$global:modulesRemoved += "$($oldModule.Name) version $($oldModule.Version)"
+                                }
                                 # Unload the old module in case it was automatically loaded in this console
                                 if (Get-Module -Name $oldModule.Name -ErrorAction SilentlyContinue)
                                 {
@@ -301,30 +310,45 @@ try
                                     Remove-Module -Name $oldModule.Name -Force -ErrorAction Inquire @verboseParameter
                                     if ($?) {Write-Host -ForegroundColor Green "  Done."}
                                 }
-                                if ($null -ne $oldModule.ModuleBase)
+                                # Set the old module's root directory depending on whether it was installed from the Gallery or not
+                                $oldModuleBase = $oldModule.InstalledLocation
+                                if ([string]::IsNullOrEmpty($oldModuleBase))
                                 {
-                                    if (Test-Path -Path $oldModule.ModuleBase -ErrorAction SilentlyContinue)
+                                    # Probably not installed from the Gallery so use ModuleBase instead
+                                    $oldModuleBase = $oldModule.ModuleBase
+                                }
+                                # Make sure that the root directory of the old module is in its own subdirectory that matches its version, otherwise we might be blowing away the top-level directory along with the new version we just installed
+                                if ((Split-Path -Path $oldModuleBase -Leaf -ErrorAction SilentlyContinue) -eq $oldModule.Version)
+                                {
+                                    if (Test-Path -Path $oldModuleBase -ErrorAction SilentlyContinue)
                                     {
-                                        Write-Host "   - Removing old module files from $($oldModule.ModuleBase)..." @noNewLineSwitch
+                                        Write-Host "   - Removing old module files from $($oldModuleBase)..." @noNewLineSwitch
                                         $Host.UI.RawUI.WindowTitle = "Cleaning up old version of '$($oldModule.Name)'..."
-                                        Remove-Item -Path $oldModule.ModuleBase -Recurse -ErrorAction SilentlyContinue @confirmParameter @verboseParameter
+                                        Remove-Item -Path $oldModuleBase -Recurse -ErrorAction SilentlyContinue @confirmParameter @verboseParameter
                                         if ($?) {Write-Host -ForegroundColor Green "Done."}
                                         else
                                         {
                                             Write-Output "."
                                         }
                                     }
-                                    # Check if the old module directory is still present for some reason
-                                    if (Test-Path -Path $oldModule.ModuleBase -ErrorAction SilentlyContinue)
+                                    else
                                     {
-                                        Write-Warning -Message "Some or all of the path '$($oldModule.ModuleBase)' could not be removed - check permissions on this location."
+                                        Write-Verbose -Message "   - Nothing remaining found to remove at $($oldModuleBase)."
+                                    }
+                                    # Check if the old module directory is still present for some reason
+                                    if (Test-Path -Path $oldModuleBase -ErrorAction SilentlyContinue)
+                                    {
+                                        Write-Warning -Message "Some or all of the path '$($oldModuleBase)' could not be removed - check permissions on this location."
                                     }
                                     else
                                     {
-                                        Write-Verbose -Message "  - Successfully removed prior version $($oldModule.Version) of '$($oldModule.Name)'."
-                                        [array]$global:modulesRemoved += "$($oldModule.Name) version $($oldModule.Version)"
+                                        Write-Verbose -Message "  - Successfully removed prior version $($oldModule.Version) of '$($oldModule.Name)' from $($oldModuleBase)."
                                     }
                                     $Host.UI.RawUI.WindowTitle = $originalWindowTitle
+                                }
+                                else
+                                {
+                                    Write-Verbose -Message "   - Skipping removal of old '$($oldModule.Name)' files from $oldModuleBase."
                                 }
                             }
                         }
@@ -364,7 +388,7 @@ finally
     if ($global:modulesInstalled.Count -ge 1)
     {
         Write-Host -ForegroundColor Cyan " - Modules Installed:"
-        foreach ($moduleInstalled in $global:modulesInstalled)
+        foreach ($moduleInstalled in $global:modulesInstalled | Select-Object -Unique)
         {
             Write-Host -ForegroundColor Green "  - $moduleInstalled"
         }
@@ -372,7 +396,7 @@ finally
     if ($global:modulesUpdated.Count -ge 1)
     {
         Write-Host -ForegroundColor Cyan " - Modules Updated:"
-        foreach ($moduleUpdated in $global:modulesUpdated)
+        foreach ($moduleUpdated in $global:modulesUpdated | Select-Object -Unique)
         {
             Write-Host -ForegroundColor Magenta "  - $moduleUpdated"
         }
@@ -380,7 +404,7 @@ finally
     if ($global:modulesUnchanged.Count -ge 1)
     {
         Write-Host -ForegroundColor Cyan " - Unchanged Modules:"
-        foreach ($moduleUnchanged in $global:modulesUnchanged)
+        foreach ($moduleUnchanged in $global:modulesUnchanged | Select-Object -Unique)
         {
             Write-Host -ForegroundColor Gray "  - $moduleUnchanged"
         }
@@ -388,7 +412,7 @@ finally
     if ($global:modulesRemoved.Count -ge 1)
     {
         Write-Host -ForegroundColor Cyan " - Uninstalled/Removed Module Versions:"
-        foreach ($moduleRemoved in $global:modulesRemoved)
+        foreach ($moduleRemoved in $global:modulesRemoved | Select-Object -Unique)
         {
             Write-Host -ForegroundColor DarkGreen "  - $moduleRemoved"
         }
