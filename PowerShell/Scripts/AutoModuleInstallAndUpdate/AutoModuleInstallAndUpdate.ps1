@@ -1,6 +1,6 @@
 
 <#PSScriptInfo
-.VERSION 0.8.1.0
+.VERSION 0.8.1.2
 .GUID 7f59e8ee-e3bd-4d72-88fe-24caf387e6f6
 .AUTHOR Brian Lalancette (@brianlala)
 .DESCRIPTION Automatically installs or updates PowerShell modules from the PowerShell Gallery
@@ -151,7 +151,7 @@ try
     if (($UpdateExistingInstalledModules) -or ($ModulesAndVersionsToCheck.Count -ge 1))
     {
         Write-Output " - Checking for requested PowerShell modules..."
-        # Because SkipPublisherCheck and AllowClobber parameters don't seem to be supported on Win2012R2 let's set whether the parameters are specified here
+        # Because SkipPublisherCheck, AllowClobber and AcceptLicense parameters don't seem to be supported on Win2012R2 let's set whether the parameters are specified here
         if (Get-Command -Name Install-Module -ParameterName AllowClobber -ErrorAction SilentlyContinue)
         {
             $allowClobberParameter = @{AllowClobber = $true}
@@ -167,6 +167,14 @@ try
         else
         {
             $skipPublisherCheckParameter = @{}
+        }
+        if (Get-Command -Name Install-Module -ParameterName AcceptLicense -ErrorAction SilentlyContinue)
+        {
+            $AcceptLicenseParameter = @{AcceptLicense = $true}
+        }
+        else
+        {
+            $AcceptLicenseParameter = @{}
         }
         Write-Verbose -Message " - `$ModulesAndVersionsToCheck.Keys: $($ModulesAndVersionsToCheck.Keys | Sort-Object)"
         foreach ($moduleToCheck in ($ModulesAndVersionsToCheck.Keys | Sort-Object))
@@ -193,8 +201,11 @@ try
                 {
                     Write-Host -ForegroundColor DarkYellow  "   - Module '$moduleToCheck' not present. Installing version $($onlineModule.Version)..." @noNewLineSwitch
                     $Host.UI.RawUI.WindowTitle = "Installing '$moduleToCheck'..."
-                    Install-Module -Name $moduleToCheck -ErrorAction Inquire -Force @allowClobberParameter @skipPublisherCheckParameter @verboseParameter @requiredVersionParameter -AcceptLicense
-                    if ($?)
+                    # Clear our error variable first
+                    Remove-Variable -Name err -ErrorAction SilentlyContinue
+                    Install-Module -Name $moduleToCheck -ErrorAction Inquire -ErrorVariable err -Force @allowClobberParameter @skipPublisherCheckParameter @verboseParameter @requiredVersionParameter @acceptLicenseParameter
+                    # Only declare success if we didn't get an error and our error variable is not set
+                    if ($? -and !$err)
                     {
                         Write-Host -ForegroundColor Green "  Done."
                         [array]$global:modulesInstalled += "$moduleToCheck version $($onlineModule.Version)"
@@ -249,7 +260,7 @@ try
                             # Update to newest online version using PowerShellGet
                             Write-Host "   - Updating module '$moduleToCheck'..." @noNewLineSwitch
                             $Host.UI.RawUI.WindowTitle = "Updating '$moduleToCheck'..."
-                            Update-Module -Name $moduleToCheck -Force @confirmParameter @verboseParameter @AllowPrereleaseParameter -ErrorAction Continue @requiredVersionParameter -AcceptLicense
+                            Update-Module -Name $moduleToCheck -Force @confirmParameter @verboseParameter @AllowPrereleaseParameter -ErrorAction Continue @requiredVersionParameter @acceptLicenseParameter
                             if ($?)
                             {
                                 Write-Host -ForegroundColor Green "  Done."
@@ -262,8 +273,11 @@ try
                             if ($IncludeAnyManuallyInstalledModules -or $updateModulesEvenIfManuallyInstalled)
                             {
                                 Write-Host "   - Installing '$moduleToCheck'..." @noNewLineSwitch
-                                Install-Module -Name $moduleToCheck -Force @allowClobberParameter @skipPublisherCheckParameter @confirmParameter @verboseParameter @AllowPrereleaseParameter -AcceptLicense
-                                if ($?)
+                                # Clear our error variable first
+                                Remove-Variable -Name err -ErrorAction SilentlyContinue
+                                Install-Module -Name $moduleToCheck -ErrorAction Inquire -ErrorVariable err -Force @allowClobberParameter @skipPublisherCheckParameter @confirmParameter @verboseParameter @AllowPrereleaseParameter @acceptLicenseParameter
+                                # Only declare success if we didn't get an error and our error variable is not set
+                                if ($? -and !$err)
                                 {
                                     Write-Host -ForegroundColor Green "  Done."
                                     [array]$global:modulesUpdated += "$moduleToCheck to version $($onlineModule.Version)"
