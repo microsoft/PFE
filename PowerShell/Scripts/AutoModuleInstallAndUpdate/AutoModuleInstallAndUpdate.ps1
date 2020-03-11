@@ -1,11 +1,11 @@
 
 <#PSScriptInfo
-.VERSION 0.8.1.0
+.VERSION 0.8.1.3
 .GUID 7f59e8ee-e3bd-4d72-88fe-24caf387e6f6
 .AUTHOR Brian Lalancette (@brianlala)
 .DESCRIPTION Automatically installs or updates PowerShell modules from the PowerShell Gallery
 .COMPANYNAME Microsoft
-.COPYRIGHT 2019 Brian Lalancette
+.COPYRIGHT 2019-2020 Brian Lalancette
 .TAGS NuGet PowerShellGet
 .LICENSEURI
 .PROJECTURI https://github.com/Microsoft/PFE/tree/master/PowerShell/Scripts/AutoModuleInstallAndUpdate
@@ -151,7 +151,7 @@ try
     if (($UpdateExistingInstalledModules) -or ($ModulesAndVersionsToCheck.Count -ge 1))
     {
         Write-Output " - Checking for requested PowerShell modules..."
-        # Because SkipPublisherCheck and AllowClobber parameters don't seem to be supported on Win2012R2 let's set whether the parameters are specified here
+        # Because SkipPublisherCheck, AllowClobber and AcceptLicense parameters don't seem to be supported on Win2012R2 let's set whether the parameters are specified here
         if (Get-Command -Name Install-Module -ParameterName AllowClobber -ErrorAction SilentlyContinue)
         {
             $allowClobberParameter = @{AllowClobber = $true}
@@ -167,6 +167,14 @@ try
         else
         {
             $skipPublisherCheckParameter = @{}
+        }
+        if (Get-Command -Name Install-Module -ParameterName AcceptLicense -ErrorAction SilentlyContinue)
+        {
+            $AcceptLicenseParameter = @{AcceptLicense = $true}
+        }
+        else
+        {
+            $AcceptLicenseParameter = @{}
         }
         Write-Verbose -Message " - `$ModulesAndVersionsToCheck.Keys: $($ModulesAndVersionsToCheck.Keys | Sort-Object)"
         foreach ($moduleToCheck in ($ModulesAndVersionsToCheck.Keys | Sort-Object))
@@ -185,7 +193,7 @@ try
             }
 
             [array]$installedModuleVersions = Get-Module -ListAvailable -FullyQualifiedName $moduleToCheck
-            if ($null -eq $installedModuleVersions -or ($null -eq (Get-InstalledModule -Name $moduleToCheck @requiredVersionParameter -ErrorAction SilentlyContinue)))
+            if ($null -eq $installedModuleVersions -and ($null -eq (Get-InstalledModule -Name $moduleToCheck @requiredVersionParameter -ErrorAction SilentlyContinue)))
             {
                 # Install requested module since it wasn't detected
                 $onlineModule = Find-Module -Name $moduleToCheck -ErrorAction SilentlyContinue @requiredVersionParameter
@@ -193,8 +201,11 @@ try
                 {
                     Write-Host -ForegroundColor DarkYellow  "   - Module '$moduleToCheck' not present. Installing version $($onlineModule.Version)..." @noNewLineSwitch
                     $Host.UI.RawUI.WindowTitle = "Installing '$moduleToCheck'..."
-                    Install-Module -Name $moduleToCheck -ErrorAction Inquire -Force @allowClobberParameter @skipPublisherCheckParameter @verboseParameter @requiredVersionParameter -AcceptLicense
-                    if ($?)
+                    # Clear our error variable first
+                    Remove-Variable -Name err -ErrorAction SilentlyContinue
+                    Install-Module -Name $moduleToCheck -ErrorAction Inquire -ErrorVariable err -Force @allowClobberParameter @skipPublisherCheckParameter @verboseParameter @requiredVersionParameter @acceptLicenseParameter
+                    # Only declare success if we didn't get an error and our error variable is not set
+                    if ($? -and !$err)
                     {
                         Write-Host -ForegroundColor Green "  Done."
                         [array]$global:modulesInstalled += "$moduleToCheck version $($onlineModule.Version)"
@@ -249,7 +260,7 @@ try
                             # Update to newest online version using PowerShellGet
                             Write-Host "   - Updating module '$moduleToCheck'..." @noNewLineSwitch
                             $Host.UI.RawUI.WindowTitle = "Updating '$moduleToCheck'..."
-                            Update-Module -Name $moduleToCheck -Force @confirmParameter @verboseParameter @AllowPrereleaseParameter -ErrorAction Continue @requiredVersionParameter -AcceptLicense
+                            Update-Module -Name $moduleToCheck -Force @confirmParameter @verboseParameter @AllowPrereleaseParameter -ErrorAction Continue @requiredVersionParameter @acceptLicenseParameter
                             if ($?)
                             {
                                 Write-Host -ForegroundColor Green "  Done."
@@ -262,8 +273,11 @@ try
                             if ($IncludeAnyManuallyInstalledModules -or $updateModulesEvenIfManuallyInstalled)
                             {
                                 Write-Host "   - Installing '$moduleToCheck'..." @noNewLineSwitch
-                                Install-Module -Name $moduleToCheck -Force @allowClobberParameter @skipPublisherCheckParameter @confirmParameter @verboseParameter @AllowPrereleaseParameter -AcceptLicense
-                                if ($?)
+                                # Clear our error variable first
+                                Remove-Variable -Name err -ErrorAction SilentlyContinue
+                                Install-Module -Name $moduleToCheck -ErrorAction Inquire -ErrorVariable err -Force @allowClobberParameter @skipPublisherCheckParameter @confirmParameter @verboseParameter @AllowPrereleaseParameter @acceptLicenseParameter
+                                # Only declare success if we didn't get an error and our error variable is not set
+                                if ($? -and !$err)
                                 {
                                     Write-Host -ForegroundColor Green "  Done."
                                     [array]$global:modulesUpdated += "$moduleToCheck to version $($onlineModule.Version)"
@@ -401,20 +415,20 @@ finally
             Write-Host -ForegroundColor Magenta "  - $moduleUpdated"
         }
     }
-    if ($global:modulesUnchanged.Count -ge 1)
-    {
-        Write-Host -ForegroundColor Cyan " - Unchanged Modules:"
-        foreach ($moduleUnchanged in $global:modulesUnchanged | Select-Object -Unique)
-        {
-            Write-Host -ForegroundColor Gray "  - $moduleUnchanged"
-        }
-    }
     if ($global:modulesRemoved.Count -ge 1)
     {
-        Write-Host -ForegroundColor Cyan " - Uninstalled/Removed Module Versions:"
+        Write-Host -ForegroundColor Cyan " - Module Versions Uninstalled/Removed:"
         foreach ($moduleRemoved in $global:modulesRemoved | Select-Object -Unique)
         {
             Write-Host -ForegroundColor DarkGreen "  - $moduleRemoved"
+        }
+    }
+    if ($global:modulesUnchanged.Count -ge 1)
+    {
+        Write-Host -ForegroundColor Cyan " - Modules Unchanged:"
+        foreach ($moduleUnchanged in $global:modulesUnchanged | Select-Object -Unique)
+        {
+            Write-Host -ForegroundColor Gray "  - $moduleUnchanged"
         }
     }
     if (!$global:modulesInstalled -and !$global:modulesUpdated)
