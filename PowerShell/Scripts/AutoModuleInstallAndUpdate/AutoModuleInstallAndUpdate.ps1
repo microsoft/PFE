@@ -1,11 +1,11 @@
 
 <#PSScriptInfo
-.VERSION 0.8.1.2
+.VERSION 0.8.1.3
 .GUID 7f59e8ee-e3bd-4d72-88fe-24caf387e6f6
 .AUTHOR Brian Lalancette (@brianlala)
 .DESCRIPTION Automatically installs or updates PowerShell modules from the PowerShell Gallery
 .COMPANYNAME Microsoft
-.COPYRIGHT 2019 Brian Lalancette
+.COPYRIGHT 2019-2020 Brian Lalancette
 .TAGS NuGet PowerShellGet
 .LICENSEURI
 .PROJECTURI https://github.com/Microsoft/PFE/tree/master/PowerShell/Scripts/AutoModuleInstallAndUpdate
@@ -193,7 +193,7 @@ try
             }
 
             [array]$installedModuleVersions = Get-Module -ListAvailable -FullyQualifiedName $moduleToCheck
-            if ($null -eq $installedModuleVersions -or ($null -eq (Get-InstalledModule -Name $moduleToCheck @requiredVersionParameter -ErrorAction SilentlyContinue)))
+            if ($null -eq $installedModuleVersions -and ($null -eq (Get-InstalledModule -Name $moduleToCheck @requiredVersionParameter -ErrorAction SilentlyContinue)))
             {
                 # Install requested module since it wasn't detected
                 $onlineModule = Find-Module -Name $moduleToCheck -ErrorAction SilentlyContinue @requiredVersionParameter
@@ -415,20 +415,20 @@ finally
             Write-Host -ForegroundColor Magenta "  - $moduleUpdated"
         }
     }
-    if ($global:modulesUnchanged.Count -ge 1)
-    {
-        Write-Host -ForegroundColor Cyan " - Unchanged Modules:"
-        foreach ($moduleUnchanged in $global:modulesUnchanged | Select-Object -Unique)
-        {
-            Write-Host -ForegroundColor Gray "  - $moduleUnchanged"
-        }
-    }
     if ($global:modulesRemoved.Count -ge 1)
     {
-        Write-Host -ForegroundColor Cyan " - Uninstalled/Removed Module Versions:"
+        Write-Host -ForegroundColor Cyan " - Module Versions Uninstalled/Removed:"
         foreach ($moduleRemoved in $global:modulesRemoved | Select-Object -Unique)
         {
             Write-Host -ForegroundColor DarkGreen "  - $moduleRemoved"
+        }
+    }
+    if ($global:modulesUnchanged.Count -ge 1)
+    {
+        Write-Host -ForegroundColor Cyan " - Modules Unchanged:"
+        foreach ($moduleUnchanged in $global:modulesUnchanged | Select-Object -Unique)
+        {
+            Write-Host -ForegroundColor Gray "  - $moduleUnchanged"
         }
     }
     if (!$global:modulesInstalled -and !$global:modulesUpdated)
