@@ -1,6 +1,6 @@
 
 <#PSScriptInfo
-.VERSION 0.8.1.5
+.VERSION 0.8.1.7
 .GUID 7f59e8ee-e3bd-4d72-88fe-24caf387e6f6
 .AUTHOR Brian Lalancette (@brianlala)
 .DESCRIPTION Automatically installs or updates PowerShell modules from the PowerShell Gallery
@@ -64,7 +64,7 @@ param
     [Parameter(Mandatory = $false)][switch]$AllowPrerelease = $false,
     [Parameter(Mandatory = $false, ParameterSetName = 'Latest')][switch]$IncludeAnyManuallyInstalledModules = $false,
     [Parameter(Mandatory = $false)][switch]$KeepPriorModuleVersions = $false,
-    [Parameter(Mandatory = $false)][string]$Repository
+    [Parameter(Mandatory = $false)][string]$Repository = $null
 )
 
 # If -IncludeAnyManuallyInstalledModules was specified then this implies -UpdateExistingInstalledModules
@@ -154,7 +154,7 @@ try
     {
         $allowPrereleaseParameter = @{}
     }
-    if ($null -ne $Repository)
+    if (!([string]::IsNullOrEmpty($Repository)))
     {
         $repositoryParameter = @{Repository = $Repository}
     }
