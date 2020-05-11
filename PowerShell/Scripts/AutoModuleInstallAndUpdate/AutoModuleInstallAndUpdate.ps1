@@ -1,6 +1,6 @@
 
 <#PSScriptInfo
-.VERSION 0.8.1.3
+.VERSION 0.8.1.5
 .GUID 7f59e8ee-e3bd-4d72-88fe-24caf387e6f6
 .AUTHOR Brian Lalancette (@brianlala)
 .DESCRIPTION Automatically installs or updates PowerShell modules from the PowerShell Gallery
@@ -34,6 +34,8 @@
     Switch that specifies we should attempt to update any modules that weren't originally installed from the PowerShell Gallery. Disabled by default.
 .PARAMETER KeepPriorModuleVersions
     Switch indicating that older versions of any updated/installed modules should be left in place. By default, any old module versions detected are uninstalled and removed from the file system.
+.PARAMETER Repository
+    Allows you to specify a non-default PowerShell repository. If omitted, uses whatever the system default is (usually the PowerShell Gallery (PSGallery))
 .EXAMPLE
     AutoModuleInstallAndUpdate.ps1 -Confirm:$false -ModulesToCheck Az,MSOnline -Verbose
     This will check and if necessary install/update both the Az and MSOnline modules to the latest published (non-prerelease) version, without prompting for confirmation.
@@ -61,7 +63,8 @@ param
     [Parameter(Mandatory = $false, ParameterSetName = 'Latest')][switch]$UpdateExistingInstalledModules = $false,
     [Parameter(Mandatory = $false)][switch]$AllowPrerelease = $false,
     [Parameter(Mandatory = $false, ParameterSetName = 'Latest')][switch]$IncludeAnyManuallyInstalledModules = $false,
-    [Parameter(Mandatory = $false)][switch]$KeepPriorModuleVersions = $false
+    [Parameter(Mandatory = $false)][switch]$KeepPriorModuleVersions = $false,
+    [Parameter(Mandatory = $false)][string]$Repository
 )
 
 # If -IncludeAnyManuallyInstalledModules was specified then this implies -UpdateExistingInstalledModules
@@ -82,6 +85,10 @@ Remove-Variable -Name modulesInstalled -Scope Global -Force -ErrorAction Silentl
 Remove-Variable -Name modulesUpdated -Scope Global -Force -ErrorAction SilentlyContinue
 Remove-Variable -Name modulesUnchanged -Scope Global -Force -ErrorAction SilentlyContinue
 Remove-Variable -Name modulesRemoved -Scope Global -Force -ErrorAction SilentlyContinue
+
+# Force TLS 1.2 (new requirement for the PowerShell Gallery)
+Write-Output " - Forcing TLS 1.2..."
+[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
 
 # If we didn't specify a modules-with-versions hash table to check on the command line, create an empty hash table that we can add items to later
 if ($null -eq $ModulesAndVersionsToCheck)
@@ -141,11 +148,19 @@ try
     }
     if ($AllowPrerelease -eq $true)
     {
-        $AllowPrereleaseParameter = @{AllowPrerelease = $true}
+        $allowPrereleaseParameter = @{AllowPrerelease = $true}
     }
     else
     {
-        $AllowPrereleaseParameter = @{}
+        $allowPrereleaseParameter = @{}
+    }
+    if ($null -ne $Repository)
+    {
+        $repositoryParameter = @{Repository = $Repository}
+    }
+    else
+    {
+        $repositoryParameter = @{}
     }
     #endregion
     if (($UpdateExistingInstalledModules) -or ($ModulesAndVersionsToCheck.Count -ge 1))
@@ -237,7 +252,7 @@ try
                     # Look for online updates to or specific version of already-installed requested module
                     Write-Host "   - Module '$moduleToCheck' version $($installedModule.Version) is already installed. Looking for $requiredVersion version..." @noNewLineSwitch
                 }
-                $onlineModule = Find-Module -Name $moduleToCheck @AllowPrereleaseParameter -ErrorAction SilentlyContinue @requiredVersionParameter
+                $onlineModule = Find-Module -Name $moduleToCheck @allowPrereleaseParameter @repositoryParameter -ErrorAction SilentlyContinue @requiredVersionParameter
                 if ($null -eq $onlineModule)
                 {
                     Write-Host -ForegroundColor Yellow "Not found in the PowerShell Gallery!"
@@ -246,6 +261,7 @@ try
                 else
                 {
                     # Get the last module
+                    Write-Verbose -Message "  - Version $($onlineModule.version) of '$moduleToCheck' found in the gallery."
                     if ($installedModule.Version -eq $onlineModule.version)
                     {
                         # Online and local versions match; no action required
@@ -260,8 +276,10 @@ try
                             # Update to newest online version using PowerShellGet
                             Write-Host "   - Updating module '$moduleToCheck'..." @noNewLineSwitch
                             $Host.UI.RawUI.WindowTitle = "Updating '$moduleToCheck'..."
-                            Update-Module -Name $moduleToCheck -Force @confirmParameter @verboseParameter @AllowPrereleaseParameter -ErrorAction Continue @requiredVersionParameter @acceptLicenseParameter
-                            if ($?)
+                            # Clear our error variable first
+                            Remove-Variable -Name err -ErrorAction SilentlyContinue
+                            Update-Module -Name $moduleToCheck -ErrorAction Inquire -ErrorVariable err -Force @confirmParameter @verboseParameter @allowPrereleaseParameter @requiredVersionParameter @acceptLicenseParameter
+                            if ($? -and !$err)
                             {
                                 Write-Host -ForegroundColor Green "  Done."
                                 [array]$global:modulesUpdated += "$moduleToCheck to version $($onlineModule.Version)"
@@ -275,7 +293,7 @@ try
                                 Write-Host "   - Installing '$moduleToCheck'..." @noNewLineSwitch
                                 # Clear our error variable first
                                 Remove-Variable -Name err -ErrorAction SilentlyContinue
-                                Install-Module -Name $moduleToCheck -ErrorAction Inquire -ErrorVariable err -Force @allowClobberParameter @skipPublisherCheckParameter @confirmParameter @verboseParameter @AllowPrereleaseParameter @acceptLicenseParameter
+                                Install-Module -Name $moduleToCheck -ErrorAction Inquire -ErrorVariable err -Force @allowClobberParameter @skipPublisherCheckParameter @confirmParameter @verboseParameter @allowPrereleaseParameter @acceptLicenseParameter @repositoryParameter
                                 # Only declare success if we didn't get an error and our error variable is not set
                                 if ($? -and !$err)
                                 {
@@ -291,8 +309,9 @@ try
                         $Host.UI.RawUI.WindowTitle = $originalWindowTitle
                     }
                     # Now check if we have more than one version installed and remove prior versions unless we've specified otherwise
-                    [array]$installedModuleVersions = Get-Module -ListAvailable -FullyQualifiedName $moduleToCheck
-                    $installedModuleVersions += Get-InstalledModule -Name $moduleToCheck -AllVersions @AllowPrereleaseParameter
+                    Write-Verbose -Message "  - Checking for multiple versions of '$moduleToCheck'..."
+                    [array]$installedModuleVersions = Get-Module -ListAvailable -FullyQualifiedName $moduleToCheck -ErrorAction SilentlyContinue
+                    $installedModuleVersions += Get-InstalledModule -Name $moduleToCheck -AllVersions -ErrorAction SilentlyContinue @allowPrereleaseParameter
                     if ($installedModuleVersions.Count -gt 1)
                     {
                         if ($KeepPriorModuleVersions)
@@ -307,11 +326,11 @@ try
                             {
                                 Write-Verbose -Message "  - Older versions of module '$moduleToCheck' found ($($oldModules.Count))."
                             }
-                            foreach ($oldModule in $oldModules | Where-Object {$_.Name -ne "PackageManagement"}) # Don't want to risk accidentally blowing away the main module doing the updating...
+                            foreach ($oldModule in $oldModules | Where-Object {$_.Name -ne "PackageManagement" -and $_.Name -ne "PowerShellGet"}) # Don't want to risk accidentally blowing away the main modules needed for updating...
                             {
                                 Write-Host "   - Uninstalling old version $($oldModule.Version) of '$($oldModule.Name)'..." @noNewLineSwitch
                                 $Host.UI.RawUI.WindowTitle = "Uninstalling old version of '$($oldModule.Name)'..."
-                                Uninstall-Module -Name $oldModule.Name -RequiredVersion $oldModule.Version -Force -ErrorAction SilentlyContinue @verboseParameter @AllowPrereleaseParameter
+                                Uninstall-Module -Name $oldModule.Name -RequiredVersion $oldModule.Version -Force -ErrorAction SilentlyContinue @verboseParameter @allowPrereleaseParameter
                                 if ($?)
                                 {
                                     Write-Host -ForegroundColor Green "  Done."
