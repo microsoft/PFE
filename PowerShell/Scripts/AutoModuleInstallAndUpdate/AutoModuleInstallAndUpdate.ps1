@@ -1,6 +1,6 @@
 
 <#PSScriptInfo
-.VERSION 0.8.1.7
+.VERSION 0.8.3.0
 .GUID 7f59e8ee-e3bd-4d72-88fe-24caf387e6f6
 .AUTHOR Brian Lalancette (@brianlala)
 .DESCRIPTION Automatically installs or updates PowerShell modules from the PowerShell Gallery
@@ -36,6 +36,8 @@
     Switch indicating that older versions of any updated/installed modules should be left in place. By default, any old module versions detected are uninstalled and removed from the file system.
 .PARAMETER Repository
     Allows you to specify a non-default PowerShell repository. If omitted, uses whatever the system default is (usually the PowerShell Gallery (PSGallery))
+.PARAMETER Scope
+    Allows you to specify the scope for module installation, similarly to what Install-Module provides. Useful for example when you don't have local admin privileges and can't install for all users. Default is 'AllUsers"
 .EXAMPLE
     AutoModuleInstallAndUpdate.ps1 -Confirm:$false -ModulesToCheck Az,MSOnline -Verbose
     This will check and if necessary install/update both the Az and MSOnline modules to the latest published (non-prerelease) version, without prompting for confirmation.
@@ -64,9 +66,32 @@ param
     [Parameter(Mandatory = $false)][switch]$AllowPrerelease = $false,
     [Parameter(Mandatory = $false, ParameterSetName = 'Latest')][switch]$IncludeAnyManuallyInstalledModules = $false,
     [Parameter(Mandatory = $false)][switch]$KeepPriorModuleVersions = $false,
-    [Parameter(Mandatory = $false)][string]$Repository = $null
+    [Parameter(Mandatory = $false)][string]$Repository = $null,
+    [Parameter(Mandatory = $false)][ValidateSet("AllUsers", "CurrentUser")][string]$Scope
 )
 
+#region Functions
+# ===================================================================================
+# Func: Pause
+# Desc: Wait for user to press a key - normally used after an error has occured or input is required
+# ===================================================================================
+Function Pause($action, $key)
+{
+    # From http://www.microsoft.com/technet/scriptcenter/resources/pstips/jan08/pstip0118.mspx
+    if ($key -eq "any" -or ([string]::IsNullOrEmpty($key)))
+    {
+        $actionString = "Press any key to $action..."
+        Write-Output $actionString
+        $null = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    }
+    else
+    {
+        $actionString = "Enter `"$key`" to $action"
+        $continue = Read-Host -Prompt $actionString
+        if ($continue -ne $key) {pause $action $key}
+    }
+}
+#endregion
 # If -IncludeAnyManuallyInstalledModules was specified then this implies -UpdateExistingInstalledModules
 if ($IncludeAnyManuallyInstalledModules -and (!$UpdateExistingInstalledModules))
 {
@@ -77,7 +102,6 @@ $Host.UI.RawUI.BackgroundColor = "Black"
 $Host.UI.RawUI.ForegroundColor = "White"
 $originalWindowTitle = $Host.UI.RawUI.WindowTitle
 
-#requires -RunAsAdministrator
 #requires -Version 5
 
 # Clean up old variables
@@ -87,7 +111,7 @@ Remove-Variable -Name modulesUnchanged -Scope Global -Force -ErrorAction Silentl
 Remove-Variable -Name modulesRemoved -Scope Global -Force -ErrorAction SilentlyContinue
 
 # Force TLS 1.2 (new requirement for the PowerShell Gallery)
-Write-Output " - Forcing TLS 1.2..."
+Write-Output " - Enforcing TLS 1.2..."
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
 
 # If we didn't specify a modules-with-versions hash table to check on the command line, create an empty hash table that we can add items to later
@@ -120,6 +144,17 @@ if ($UpdateExistingInstalledModules)
 try
 {
     #region Pre-Checks
+
+    # Check for admin, if not, prompt if we would like to install to CurrentUser scope
+    # First check if we are running this under an elevated session. Pulled from the script at http://gallery.technet.microsoft.com/scriptcenter/1b5df952-9e10-470f-ad7c-dc2bdc2ac946
+    If (!([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator"))
+    {
+        Write-Warning " - You are not running this script under an elevated PowerShell prompt. Launch an elevated PowerShell prompt by right-clicking the PowerShell shortcut and selecting `"Run as Administrator`"."
+        Write-Output " - If your account does not have local admin privileges, you may continue installing modules to your own profile with the 'CurrentUser' scope."
+        Pause -action "proceed with installing as CurrentUser, or Ctrl-C to exit" -key "y"
+        $Scope = "CurrentUser"
+    }
+
     if ($null -eq (Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue))
     {
         # Install NuGet
@@ -160,7 +195,15 @@ try
     }
     else
     {
-        $repositoryParameter = @{}
+        $repositoryParameter = @{} # Default repository
+    }
+    if (!([string]::IsNullOrEmpty($Scope)))
+    {
+        $scopeParameter = @{Scope = $Scope}
+    }
+    else
+    {
+        $scopeParameter = @{} # Default scope
     }
     #endregion
     if (($UpdateExistingInstalledModules) -or ($ModulesAndVersionsToCheck.Count -ge 1))
@@ -218,7 +261,7 @@ try
                     $Host.UI.RawUI.WindowTitle = "Installing '$moduleToCheck'..."
                     # Clear our error variable first
                     Remove-Variable -Name err -ErrorAction SilentlyContinue
-                    Install-Module -Name $moduleToCheck -ErrorAction Inquire -ErrorVariable err -Force @allowClobberParameter @skipPublisherCheckParameter @verboseParameter @requiredVersionParameter @acceptLicenseParameter
+                    Install-Module -Name $moduleToCheck -ErrorAction Inquire -ErrorVariable err -Force @allowClobberParameter @skipPublisherCheckParameter @verboseParameter @requiredVersionParameter @acceptLicenseParameter @repositoryParameter @scopeParameter
                     # Only declare success if we didn't get an error and our error variable is not set
                     if ($? -and !$err)
                     {
@@ -278,7 +321,7 @@ try
                             $Host.UI.RawUI.WindowTitle = "Updating '$moduleToCheck'..."
                             # Clear our error variable first
                             Remove-Variable -Name err -ErrorAction SilentlyContinue
-                            Update-Module -Name $moduleToCheck -ErrorAction Inquire -ErrorVariable err -Force @confirmParameter @verboseParameter @allowPrereleaseParameter @requiredVersionParameter @acceptLicenseParameter
+                            Update-Module -Name $moduleToCheck -ErrorAction Inquire -ErrorVariable err -Force @confirmParameter @verboseParameter @allowPrereleaseParameter @requiredVersionParameter @acceptLicenseParameter @scopeParameter
                             if ($? -and !$err)
                             {
                                 Write-Host -ForegroundColor Green "  Done."
@@ -293,7 +336,7 @@ try
                                 Write-Host "   - Installing '$moduleToCheck'..." @noNewLineSwitch
                                 # Clear our error variable first
                                 Remove-Variable -Name err -ErrorAction SilentlyContinue
-                                Install-Module -Name $moduleToCheck -ErrorAction Inquire -ErrorVariable err -Force @allowClobberParameter @skipPublisherCheckParameter @confirmParameter @verboseParameter @allowPrereleaseParameter @acceptLicenseParameter @repositoryParameter
+                                Install-Module -Name $moduleToCheck -ErrorAction Inquire -ErrorVariable err -Force @allowClobberParameter @skipPublisherCheckParameter @confirmParameter @verboseParameter @allowPrereleaseParameter @acceptLicenseParameter @repositoryParameter @scopeParameter
                                 # Only declare success if we didn't get an error and our error variable is not set
                                 if ($? -and !$err)
                                 {
