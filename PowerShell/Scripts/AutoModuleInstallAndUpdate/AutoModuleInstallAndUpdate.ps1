@@ -254,14 +254,14 @@ try
             if ($null -eq $installedModuleVersions -and ($null -eq (Get-InstalledModule -Name $moduleToCheck @requiredVersionParameter -ErrorAction SilentlyContinue)))
             {
                 # Install requested module since it wasn't detected
-                $onlineModule = Find-Module -Name $moduleToCheck -ErrorAction SilentlyContinue @requiredVersionParameter
+                $onlineModule = Find-Module -Name $moduleToCheck -ErrorAction SilentlyContinue @requiredVersionParameter @allowPrereleaseParameter
                 if ($onlineModule)
                 {
                     Write-Host -ForegroundColor DarkYellow  "   - Module '$moduleToCheck' not present. Installing version $($onlineModule.Version)..." @noNewLineSwitch
                     $Host.UI.RawUI.WindowTitle = "Installing '$moduleToCheck'..."
                     # Clear our error variable first
                     Remove-Variable -Name err -ErrorAction SilentlyContinue
-                    Install-Module -Name $moduleToCheck -ErrorAction Inquire -ErrorVariable err -Force @allowClobberParameter @skipPublisherCheckParameter @verboseParameter @requiredVersionParameter @acceptLicenseParameter @repositoryParameter @scopeParameter
+                    Install-Module -Name $moduleToCheck -ErrorAction Inquire -ErrorVariable err -Force @allowClobberParameter @skipPublisherCheckParameter @verboseParameter @requiredVersionParameter @acceptLicenseParameter @repositoryParameter @scopeParameter @allowPrereleaseParameter
                     # Only declare success if we didn't get an error and our error variable is not set
                     if ($? -and !$err)
                     {
