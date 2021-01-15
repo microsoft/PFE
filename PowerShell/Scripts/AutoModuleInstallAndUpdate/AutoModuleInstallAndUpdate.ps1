@@ -1,6 +1,6 @@
 
 <#PSScriptInfo
-.VERSION 0.8.3.0
+.VERSION 0.8.3.1
 .GUID 7f59e8ee-e3bd-4d72-88fe-24caf387e6f6
 .AUTHOR Brian Lalancette (@brianlala)
 .DESCRIPTION Automatically installs or updates PowerShell modules from the PowerShell Gallery
