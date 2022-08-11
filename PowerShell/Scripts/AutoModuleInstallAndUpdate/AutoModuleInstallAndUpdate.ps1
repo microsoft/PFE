@@ -1,11 +1,11 @@
 
 <#PSScriptInfo
-.VERSION 0.9.0.0
+.VERSION 0.9.1.3
 .GUID 7f59e8ee-e3bd-4d72-88fe-24caf387e6f6
 .AUTHOR Brian Lalancette (@brianlala)
 .DESCRIPTION Automatically installs or updates PowerShell modules from the PowerShell Gallery
 .COMPANYNAME Microsoft
-.COPYRIGHT 2019-2020 Brian Lalancette
+.COPYRIGHT 2019-2022 Brian Lalancette
 .TAGS NuGet PowerShellGet
 .LICENSEURI
 .PROJECTURI https://github.com/Microsoft/PFE/tree/master/PowerShell/Scripts/AutoModuleInstallAndUpdate
@@ -26,6 +26,8 @@
     Allows you to include an optional comma-delimited list (array) of modules to install or update.
 .PARAMETER ModulesAndVersionsToCheck
     Accepts a hash table containing name-value pairs of modules and specific desired versions. To request the latest available version of a particular module, leave its value as an empty set of double quotes.
+.PARAMETER ModulesToExclude
+    Allows you to exclude an optional comma-delimited list (array) of modules to skip updating when specifying UpdateExistingInstalledModules or IncludeAnyManuallyInstalledModules.
 .PARAMETER UpdateExistingInstalledModules
     Switch that indicates whether we should look for updates to any modules that are already installed on the current system. Disabled by default.
 .PARAMETER AllowPrerelease
@@ -63,6 +65,7 @@ param
 (
     [Parameter(Mandatory = $false)][bool]$Confirm = $true,
     [Parameter(Mandatory = $false, ParameterSetName = 'Latest')][ValidateNotNullOrEmpty()][array]$ModulesToCheck,
+    [Parameter(Mandatory = $false, ParameterSetName = 'Latest')][ValidateNotNullOrEmpty()][array]$ModulesToExclude,
     [Parameter(Mandatory = $false, ParameterSetName = 'Versioned')][ValidateNotNullOrEmpty()][hashtable]$ModulesAndVersionsToCheck,
     [Parameter(Mandatory = $false, ParameterSetName = 'Latest')][switch]$UpdateExistingInstalledModules = $false,
     [Parameter(Mandatory = $false)][switch]$AllowPrerelease = $false,
@@ -114,11 +117,17 @@ Remove-Variable -Name modulesUnchanged -Scope Global -Force -ErrorAction Silentl
 Remove-Variable -Name modulesRemoved -Scope Global -Force -ErrorAction SilentlyContinue
 
 # Force TLS 1.2 (new requirement for the PowerShell Gallery)
-Write-Output " - Enforcing TLS 1.2..."
-[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
-
+if ([System.Net.ServicePointManager]::SecurityProtocol -ne "Tls12")
+{
+    Write-Output " - Enforcing TLS 1.2..."
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+}
+else
+{
+    Write-Verbose -Message "Already using TLS 1.2"
+}
 # If we didn't specify a modules-with-versions hash table to check on the command line, create an empty hash table that we can add items to later
-if ($null -eq $ModulesAndVersionsToCheck)
+if ($PSBoundParameters.ContainsKey("ModulesAndVersionsToCheck") -eq $false)
 {
     [hashtable]$ModulesAndVersionsToCheck = @{}
     if ($ModulesToCheck.Count -ge 1)
@@ -130,14 +139,14 @@ if ($null -eq $ModulesAndVersionsToCheck)
         }
     }
 }
-elseif ($null -ne $ModulesToCheck -or $null -ne $ModulesAndVersionsToCheck)
+if ($ModulesToCheck.Count -ge 1 -or $ModulesAndVersionsToCheck.Count -ge 1)
 {
     # We want to make sure that if we have specifically included modules to check that they're checked even if they were manually installed
     $updateModulesEvenIfManuallyInstalled = $true
 }
 if ($UpdateExistingInstalledModules)
 {
-    foreach ($existingInstalledModule in ((Get-Module -ListAvailable | Where-Object ModuleBase -like "$env:ProgramFiles\WindowsPowerShell\Modules\*")))
+    foreach ($existingInstalledModule in ((Get-Module -ListAvailable | Where-Object ModuleBase -like "$env:ProgramFiles\WindowsPowerShell\Modules\*") | Where-Object {$_.Name -notin $ModulesToExclude}))
     {
         Write-Verbose -Message " - Adding existing installed module '$($existingInstalledModule.Name)' to list of modules to update."
         $ModulesAndVersionsToCheck[$($existingInstalledModule.Name)] = "" # Empty quotes for latest available version
@@ -301,6 +310,7 @@ try
                     # Grab the newest version in case there are multiple
                     $installedModule = ($installedModuleVersions | Sort-Object -Property Version -Descending)[0]
                     $installedModuleWasFromGallery = $false
+                    Write-Verbose -Message " - '$($installedModule.Name)' found; appears to have been manually or pre-installed."
                 }
                 if ($requiredVersion -ne $($installedModule.Version))
                 {
@@ -495,7 +505,7 @@ finally
         Write-Host -ForegroundColor Cyan " - Module Versions Uninstalled/Removed:"
         foreach ($moduleRemoved in $global:modulesRemoved | Select-Object -Unique)
         {
-            Write-Host -ForegroundColor DarkGreen "  - $moduleRemoved"
+            Write-Host -ForegroundColor DarkRed "  - $moduleRemoved"
         }
     }
     if ($global:modulesUnchanged.Count -ge 1)
@@ -504,6 +514,14 @@ finally
         foreach ($moduleUnchanged in $global:modulesUnchanged | Select-Object -Unique)
         {
             Write-Host -ForegroundColor Gray "  - $moduleUnchanged"
+        }
+    }
+    if ($ModulesToExclude.Count -ge 1)
+    {
+        Write-Host -ForegroundColor Cyan " - Modules Excluded (By Request):"
+        foreach ($moduleToExclude in $ModulesToExclude | Select-Object -Unique)
+        {
+            Write-Host -ForegroundColor DarkCyan "  - $moduleToExclude"
         }
     }
     if (!$global:modulesInstalled -and !$global:modulesUpdated)
