@@ -35,7 +35,7 @@
             Tags = @('PowerShell', 'SharePoint', 'PFE')
 
             # A URL to the license for this module.
-            LicenseUri = ''
+            LicenseUri = 'https://github.com/Microsoft/PFE/blob/master/LICENSE'
 
             # A URL to the main website for this project.
             ProjectUri = 'https://Github.com/Microsoft/PFE'
