@@ -42,7 +42,7 @@ Describe -Name $Global:TestHelper.DescribeHeader -Fixture {
                 -Name Update `
                 -Value {
                 } -PassThru
-            } 
+            }
 
             $testParams = @{
                 Database = "WSS_Content"
